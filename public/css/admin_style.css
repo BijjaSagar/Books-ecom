@@ -1,0 +1,43 @@
+/* public/css/admin_style.css - Final with Top Bar */
+
+:root {
+    --admin-primary: #0d6efd;
+    --admin-sidebar-width: 240px;
+    --admin-topbar-height: 56px; /* Define header height */
+}
+
+body { background-color: #f4f7f9; }
+
+.admin-top-navbar {
+    height: var(--admin-topbar-height);
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    position: fixed;
+    top: 0;
+    left: var(--admin-sidebar-width);
+    right: 0;
+    z-index: 99;
+}
+
+.admin-sidebar {
+    width: var(--admin-sidebar-width);
+    background-color: #fff;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 100;
+    padding-top: 1rem;
+}
+
+.admin-sidebar .nav-link { font-weight: 500; color: #333; padding: 0.75rem 1.5rem; display: flex; align-items: center; border-left: 3px solid transparent; }
+.admin-sidebar .nav-link .bi { margin-right: 1rem; }
+.admin-sidebar .nav-link.active, .admin-sidebar .nav-link:hover { color: var(--admin-primary); background-color: #e9f2ff; border-left-color: var(--admin-primary); }
+
+.admin-main-content {
+    margin-left: var(--admin-sidebar-width);
+    padding: 2rem;
+    /* Add padding-top equal to the header height */
+    padding-top: calc(var(--admin-topbar-height) + 2rem);
+}

@@ -1,0 +1,37 @@
+<!-- Newsletter Modal -->
+<div class="modal fade newsletter-modal" id="newsletterModal" tabindex="-1" aria-labelledby="newsletterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newsletterModalLabel">
+                    <i class="bi bi-envelope-heart me-2 text-primary"></i>
+                    Subscribe to Our Newsletter
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-4">Get the latest book recommendations, exclusive deals, and reading tips delivered to your inbox.</p>
+                <form id="modalNewsletterForm">
+                    <div class="mb-3">
+                        <label for="modalEmail" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="modalEmail" name="email" required placeholder="Enter your email address">
+                    </div>
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" value="" id="agreeTerms" required>
+                        <label class="form-check-label" for="agreeTerms">
+                            I agree to receive newsletters and promotional emails
+                        </label>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-envelope-plus me-2"></i>Subscribe Now
+                        </button>
+                    </div>
+                </form>
+                <div class="text-center mt-3">
+                    <small class="text-muted">You can unsubscribe at any time. We respect your privacy.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
