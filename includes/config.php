@@ -1,23 +1,58 @@
 <?php
 // includes/config.php
-// Database configuration for SQLite
+// Database configuration for MySQL
 
-// SQLite database file
-$db_file = 'bookshelf.db';
+// Load environment variables from .env file
+$env_file = __DIR__ . '/../.env';
+if (file_exists($env_file)) {
+    $lines = file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+            list($key, $value) = explode('=', $line, 2);
+            $_ENV[trim($key)] = trim($value);
+        }
+    }
+}
 
-// Create SQLite connection
+// MySQL Database Configuration
+$db_host = $_ENV['DB_HOST'] ?? 'localhost';
+$db_username = $_ENV['DB_USERNAME'] ?? 'root';
+$db_password = $_ENV['DB_PASSWORD'] ?? '';
+$db_name = $_ENV['DB_DATABASE'] ?? 'bookshelf_db';
+$db_port = $_ENV['DB_PORT'] ?? 3306;
+
+// Create MySQL connection using MySQLi
 try {
-    $conn = new SQLite3($db_file);
-    $conn->exec('PRAGMA foreign_keys = ON;');
+    $conn = new mysqli(
+        $db_host,
+        $db_username,
+        $db_password,
+        $db_name,
+        (int)$db_port
+    );
+
+    // Check connection
+    if ($conn->connect_error) {
+        error_log("Database connection failed: " . $conn->connect_error);
+        die("Database connection failed. Please check your configuration.");
+    }
+
+    // Set charset to utf8mb4
+    if (!$conn->set_charset("utf8mb4")) {
+        error_log("Error loading character set utf8mb4: " . $conn->error);
+    }
+
+    // Set timezone for MySQL
+    $conn->query("SET time_zone = '+00:00'");
+
+    // Enable reporting for development (disable in production)
+    if (defined('DEBUG') && DEBUG) {
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+    }
+
 } catch (Exception $e) {
     error_log("Database connection failed: " . $e->getMessage());
     die("Database connection failed. Please check your configuration.");
-}
-
-// Enable error reporting for development (disable in production)
-if (defined('DEBUG') && DEBUG) {
-    // SQLite3 doesn't use mysqli_report, but we can enable exceptions
-    $conn->enableExceptions(true);
 }
 
 // Set timezone
@@ -28,8 +63,45 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Helper function to emulate MySQLi prepare statement for SQLite
+// Helper function for prepared statements
 function prepare_statement($conn, $sql) {
-    return $conn->prepare($sql);
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log("Prepare failed: " . $conn->error);
+        return false;
+    }
+    return $stmt;
 }
+
+// Function to safely execute query
+function execute_query($conn, $sql, $types = '', $params = array()) {
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log("Query failed: " . $conn->error);
+        return false;
+    }
+
+    if (!empty($types) && !empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    if (!$stmt->execute()) {
+        error_log("Execution failed: " . $stmt->error);
+        return false;
+    }
+
+    return $stmt->get_result();
+}
+
+// Function to get last insert ID
+function get_last_insert_id($conn) {
+    return $conn->insert_id;
+}
+
+// Database constants
+define('DB_HOST', $db_host);
+define('DB_USERNAME', $db_username);
+define('DB_NAME', $db_name);
+define('DB_PORT', $db_port);
+
 ?>
