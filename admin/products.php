@@ -378,12 +378,11 @@ renderProfessionalJavaScript();
                                                 style="padding: var(--spacing-1) var(--spacing-2); font-size: var(--font-size-xs);">
                                             <span>✏️</span> Edit
                                         </button>
-                                        <a href="products.php?action=delete&id=<?php echo $row['id']; ?>" 
-                                           class="btn-professional btn-danger-professional" 
-                                           onclick="return confirm('Are you sure you want to delete this book?');"
-                                           style="padding: var(--spacing-1) var(--spacing-2); font-size: var(--font-size-xs);">
+                                        <button class="btn-professional btn-danger-professional"
+                                                onclick="openDeleteConfirmDialog(<?php echo $row['id']; ?>, '<?php echo htmlspecialchars($row['title']); ?>')"
+                                                style="padding: var(--spacing-1) var(--spacing-2); font-size: var(--font-size-xs);">
                                             <span>🗑️</span> Delete
-                                        </a>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -727,7 +726,54 @@ renderProfessionalJavaScript();
             </div>
         </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-professional" id="deleteConfirmModal">
+        <div class="modal-content-professional" style="max-width: 500px;">
+            <div class="modal-header-professional" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+                <h4 class="modal-title" style="color: white;">
+                    <span>⚠️</span> Delete Product
+                </h4>
+                <button type="button" class="btn-professional" style="background: none; border: none; font-size: 1.5rem; padding: var(--spacing-1); color: white;" onclick="closeModal('deleteConfirmModal')">
+                    <span>❌</span>
+                </button>
+            </div>
+
+            <div class="modal-body-professional">
+                <div style="text-align: center; padding: 2rem 0;">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: #ff6b6b; display: block; margin-bottom: 1rem;"></i>
+                    <h5 style="color: var(--dark); margin-bottom: 1rem;">Are you sure?</h5>
+                    <p style="color: #6c757d; margin-bottom: 0.5rem;">You're about to delete:</p>
+                    <p style="color: var(--primary); font-weight: 600; font-size: 1.1rem; word-break: break-word;" id="deleteProductTitle"></p>
+                    <div style="background-color: #f8f9fa; border-left: 4px solid #ff6b6b; padding: 1rem; margin-top: 1.5rem; border-radius: 0.5rem;">
+                        <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">
+                            ⚠️ <strong>This action cannot be undone.</strong> The product will be permanently deleted from your inventory.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer-professional" style="background-color: #f8f9fa;">
+                <button type="button" class="btn-professional btn-outline-professional" onclick="closeModal('deleteConfirmModal')">
+                    <span>❌</span> Cancel
+                </button>
+                <button type="button" class="btn-professional btn-danger-professional" id="deleteConfirmBtn" onclick="confirmDelete()" style="min-width: 120px;">
+                    <span id="deleteBtnText">🗑️ Delete</span>
+                    <span id="deleteSpinner" style="display: none; margin-left: 0.5rem;">
+                        <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite;"></i>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1113,6 +1159,169 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStepUI();
     console.log('✅ Initialization complete!');
 });
+
+// ============================================
+// DELETE PRODUCT FUNCTIONALITY
+// ============================================
+
+let deleteProductId = null;
+
+// Open delete confirmation dialog
+window.openDeleteConfirmDialog = function(productId, productTitle) {
+    console.log('🗑️ Opening delete confirmation for product:', productId, productTitle);
+
+    deleteProductId = productId;
+    document.getElementById('deleteProductTitle').textContent = productTitle;
+
+    // Reset button state
+    const deleteBtn = document.getElementById('deleteConfirmBtn');
+    deleteBtn.disabled = false;
+    document.getElementById('deleteBtnText').style.display = 'inline';
+    document.getElementById('deleteSpinner').style.display = 'none';
+
+    openModal('deleteConfirmModal');
+};
+
+// Confirm and execute delete
+window.confirmDelete = function() {
+    if (!deleteProductId) {
+        console.error('❌ No product ID set for deletion');
+        alert('Error: Product ID not found');
+        return;
+    }
+
+    const deleteBtn = document.getElementById('deleteConfirmBtn');
+    deleteBtn.disabled = true;
+    document.getElementById('deleteBtnText').style.display = 'none';
+    document.getElementById('deleteSpinner').style.display = 'inline';
+
+    console.log('🔄 Sending delete request for product:', deleteProductId);
+
+    // Send AJAX request to delete
+    fetch('delete-product.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: deleteProductId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('📥 Delete response:', data);
+
+        if (data.success) {
+            console.log('✅ Product deleted successfully');
+
+            // Close modal
+            closeModal('deleteConfirmModal');
+
+            // Show success message
+            showSuccessMessage(data.message || '✅ Product deleted successfully!');
+
+            // Reload page after 2 seconds
+            setTimeout(() => {
+                console.log('🔄 Reloading page...');
+                location.reload();
+            }, 2000);
+        } else {
+            console.error('❌ Delete failed:', data.message);
+            showErrorMessage(data.message || '❌ Failed to delete product');
+
+            // Reset button
+            deleteBtn.disabled = false;
+            document.getElementById('deleteBtnText').style.display = 'inline';
+            document.getElementById('deleteSpinner').style.display = 'none';
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error during delete:', error);
+        showErrorMessage('❌ Error: ' + error.message);
+
+        // Reset button
+        deleteBtn.disabled = false;
+        document.getElementById('deleteBtnText').style.display = 'inline';
+        document.getElementById('deleteSpinner').style.display = 'none';
+    });
+};
+
+// Show success message
+function showSuccessMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'alert-professional alert-success-professional';
+    messageDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; animation: slideIn 0.3s ease-out;';
+    messageDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="font-size: 1.5rem;">✅</span>
+            <div>
+                <h6 style="margin: 0; font-weight: 600;">Success</h6>
+                <p style="margin: 0; font-size: 0.9rem;">${message}</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        messageDiv.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 5000);
+}
+
+// Show error message
+function showErrorMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'alert-professional alert-danger-professional';
+    messageDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; animation: slideIn 0.3s ease-out;';
+    messageDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="font-size: 1.5rem;">❌</span>
+            <div>
+                <h6 style="margin: 0; font-weight: 600;">Error</h6>
+                <p style="margin: 0; font-size: 0.9rem;">${message}</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        messageDiv.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 5000);
+}
+
+// Add slide-in/out animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+console.log('✅ Delete functionality initialized');
 </script>
 
 <?php include '../includes/admin_footer.php'; ?>
