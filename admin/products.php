@@ -223,7 +223,7 @@ renderProfessionalJavaScript();
                 <h1 class="page-title">📚 Product Management</h1>
                 <p class="page-subtitle">Manage your book inventory and listings</p>
             </div>
-            <button class="btn-professional btn-primary-professional" onclick="openModal('productModal')">
+            <button class="btn-professional btn-primary-professional" onclick="openNewProductModal()">
                 <span>➕</span> Add New Book
             </button>
         </div>
@@ -872,52 +872,144 @@ document.addEventListener('DOMContentLoaded', function() {
     if (productModal) {
         productModal.addEventListener('hidden.bs.modal', function () {
             console.log('🔄 Modal closed, resetting...');
+
+            // Reset form title and content
             modalTitle.innerHTML = '<span>📚</span> Add New Book';
             productForm.reset();
             document.getElementById('product_id').value = '0';
             document.getElementById('existing_cover_image').value = '';
-            
+
+            // Hide cover image preview
+            const coverPreview = document.getElementById('cover-preview');
+            if (coverPreview) {
+                coverPreview.style.display = 'none';
+                const coverImg = document.getElementById('cover-img');
+                if (coverImg) coverImg.src = '';
+            }
+
+            // Clear additional images preview
+            const additionalPreview = document.getElementById('additional-preview');
+            if (additionalPreview) {
+                additionalPreview.innerHTML = '';
+            }
+
             // Reset to first tab
             currentTabIndex = 0;
             showTab(0);
             updateStepUI();
-            
+
             // Clear validation classes
             document.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
                 el.classList.remove('is-valid', 'is-invalid');
             });
+
+            // Scroll to top
+            const modalBody = document.querySelector('.modal-body-professional');
+            if (modalBody) {
+                modalBody.scrollTop = 0;
+            }
+
+            console.log('✅ Modal reset complete');
         });
     }
+
+    // Handle add new product button click
+    window.openNewProductModal = function() {
+        console.log('➕ Opening new product modal');
+
+        // Reset form
+        modalTitle.innerHTML = '<span>📚</span> Add New Book';
+        productForm.reset();
+        document.getElementById('product_id').value = '0';
+        document.getElementById('existing_cover_image').value = '';
+
+        // Hide cover image preview
+        const coverPreview = document.getElementById('cover-preview');
+        if (coverPreview) {
+            coverPreview.style.display = 'none';
+            const coverImg = document.getElementById('cover-img');
+            if (coverImg) coverImg.src = '';
+        }
+
+        // Clear additional images preview
+        const additionalPreview = document.getElementById('additional-preview');
+        if (additionalPreview) {
+            additionalPreview.innerHTML = '';
+        }
+
+        // Clear all input fields
+        document.querySelectorAll('input[type="text"], input[type="number"], input[type="email"], input[type="url"], input[type="date"], textarea, select').forEach(field => {
+            if (field.id !== 'product_id' && field.id !== 'existing_cover_image') {
+                if (field.type === 'checkbox') {
+                    field.checked = false;
+                } else {
+                    field.value = '';
+                }
+            }
+        });
+
+        // Scroll to top
+        const modalBody = document.querySelector('.modal-body-professional');
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
+
+        // Open modal
+        openModal('productModal');
+        console.log('✅ New product modal opened');
+    };
 
     // Handle edit button click - FIXED FUNCTION
     window.openEditProductModal = function(data) {
         console.log('✏️ Opening edit modal with data:', data);
-        
+
         // Update modal title
         modalTitle.innerHTML = '<span>✏️</span> Edit Book';
-        
-        // Fill all form fields
+
+        // Set product ID and existing cover image first
+        document.getElementById('product_id').value = data.id;
+        document.getElementById('existing_cover_image').value = data.cover_image || '';
+
+        // Fill all form fields from database
         Object.keys(data).forEach(key => {
             const field = document.getElementById(key);
             if (field) {
                 if (field.type === 'checkbox') {
-                    field.checked = data[key] == 1;
+                    field.checked = data[key] == 1 || data[key] === true || data[key] === '1';
+                } else if (field.type === 'date') {
+                    // Format date properly for date input
+                    field.value = data[key] ? data[key].split(' ')[0] : '';
                 } else {
                     field.value = data[key] || '';
                 }
+                console.log(`✅ Field "${key}" set to:`, data[key]);
             }
         });
-        
+
         // Special handling for featured checkbox
         const featuredCheckbox = document.getElementById('featured');
         if (featuredCheckbox) {
-            featuredCheckbox.checked = data['featured'] == 1;
+            featuredCheckbox.checked = data['featured'] == 1 || data['featured'] === true || data['featured'] === '1';
+            console.log('✅ Featured checkbox set to:', featuredCheckbox.checked);
         }
-        
-        // Set product ID
-        document.getElementById('product_id').value = data.id;
-        document.getElementById('existing_cover_image').value = data.cover_image || '';
-        
+
+        // Show existing cover image preview
+        if (data.cover_image) {
+            const coverPreview = document.getElementById('cover-preview');
+            const coverImg = document.getElementById('cover-img');
+            if (coverPreview && coverImg) {
+                coverImg.src = '/bookshelf/public/images/products/' + data.cover_image;
+                coverPreview.style.display = 'block';
+                console.log('✅ Cover image preview displayed:', data.cover_image);
+            }
+        }
+
+        // Scroll to top of form
+        const modalBody = document.querySelector('.modal-body-professional');
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
+
         // Open modal
         openModal('productModal');
     };
