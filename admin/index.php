@@ -288,8 +288,9 @@ if ($settings_result) {
         <div class="login-body">
             <?php
             $admin_check = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
-            $admin_count = $admin_check->fetchArray(SQLITE3_ASSOC)['count'];
-            
+            $result = $admin_check->get_result();
+            $admin_count = $result->fetch_assoc()['count'];
+
             if ($admin_count == 0): ?>
                 <div class="setup-notice">
                     <strong>First Time Setup:</strong>
