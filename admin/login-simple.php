@@ -24,8 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Check if this is the first time setup
         $admin_check = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
         if ($admin_check) {
-            $result = $admin_check->get_result();
-            $row = $result->fetch_assoc();
+            $row = $admin_check->fetch_assoc();
             $admin_count = $row ? $row['count'] : 0;
         } else {
             $errors[] = "Database error: " . $conn->error;
@@ -85,8 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $admin_check = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
 $admin_count = 0;
 if ($admin_check) {
-    $result = $admin_check->get_result();
-    $row = $result->fetch_assoc();
+    $row = $admin_check->fetch_assoc();
     $admin_count = $row ? $row['count'] : 0;
 }
 ?>

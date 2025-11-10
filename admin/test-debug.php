@@ -36,8 +36,7 @@ if ($conn->connect_error) {
 echo "<p><strong>4. Checking users table...</strong></p>";
 $result = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
 if ($result) {
-    $res = $result->get_result();
-    $row = $res->fetch_assoc();
+    $row = $result->fetch_assoc();
     echo "✅ Query successful<br>";
     echo "Admin count: " . $row['count'] . "<br>";
 } else {

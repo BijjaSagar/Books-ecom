@@ -20,8 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // Check if this is the first time setup
         $admin_check = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
-        $result = $admin_check->get_result();
-        $admin_count = $result->fetch_assoc()['count'];
+        $admin_count = $admin_check->fetch_assoc()['count'];
 
         if ($admin_count == 0) {
             // First time setup - create default admin
@@ -288,8 +287,7 @@ if ($settings_result) {
         <div class="login-body">
             <?php
             $admin_check = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
-            $result = $admin_check->get_result();
-            $admin_count = $result->fetch_assoc()['count'];
+            $admin_count = $admin_check->fetch_assoc()['count'];
 
             if ($admin_count == 0): ?>
                 <div class="setup-notice">
