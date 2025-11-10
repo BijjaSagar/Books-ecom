@@ -2,27 +2,29 @@
 include '../includes/admin_header.php';
 
 // Get key statistics
-$total_products = $conn->query("SELECT COUNT(*) as count FROM products")->fetchArray(SQLITE3_ASSOC)['count'];
-$published_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 'published'")->fetchArray(SQLITE3_ASSOC)['count'];
-$draft_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 'draft'")->fetchArray(SQLITE3_ASSOC)['count'];
+$total_products = $conn->query("SELECT COUNT(*) as count FROM products")->fetch_assoc()['count'];
+$published_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 'published'")->fetch_assoc()['count'];
+$draft_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 'draft'")->fetch_assoc()['count'];
 
-$total_orders = $conn->query("SELECT COUNT(*) as count FROM orders")->fetchArray(SQLITE3_ASSOC)['count'];
-$pending_orders = $conn->query("SELECT COUNT(*) as count FROM orders WHERE order_status = 'pending'")->fetchArray(SQLITE3_ASSOC)['count'];
-$processing_orders = $conn->query("SELECT COUNT(*) as count FROM orders WHERE order_status = 'processing'")->fetchArray(SQLITE3_ASSOC)['count'];
+$total_orders = $conn->query("SELECT COUNT(*) as count FROM orders")->fetch_assoc()['count'];
+$pending_orders = $conn->query("SELECT COUNT(*) as count FROM orders WHERE order_status = 'pending'")->fetch_assoc()['count'];
+$processing_orders = $conn->query("SELECT COUNT(*) as count FROM orders WHERE order_status = 'processing'")->fetch_assoc()['count'];
 
-$total_revenue = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE order_status IN ('completed', 'delivered')")->fetchArray(SQLITE3_ASSOC)['total'] ?? 0;
-$today_revenue = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE order_status IN ('completed', 'delivered') AND DATE(created_at) = DATE('now')")->fetchArray(SQLITE3_ASSOC)['total'] ?? 0;
+$total_revenue = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE order_status IN ('completed', 'delivered')")->fetch_assoc()['total'] ?? 0;
+$today_revenue = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE order_status IN ('completed', 'delivered') AND DATE(created_at) = CURDATE()")->fetch_assoc()['total'] ?? 0;
 
-$total_customers = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'customer'")->fetchArray(SQLITE3_ASSOC)['count'];
-$new_customers = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'customer' AND DATE(created_at) >= DATE('now', '-7 days')")->fetchArray(SQLITE3_ASSOC)['count'];
+$total_customers = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'customer'")->fetch_assoc()['count'];
+$new_customers = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'customer' AND DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)")->fetch_assoc()['count'];
 
 // Get recent orders
-$recent_orders_stmt = $conn->prepare("SELECT o.*, COALESCE(o.first_name || ' ' || o.last_name, 'Guest') as customer_name FROM orders o ORDER BY o.created_at DESC LIMIT 5");
-$recent_orders_result = $recent_orders_stmt->execute();
+$recent_orders_stmt = $conn->prepare("SELECT o.*, COALESCE(CONCAT(o.first_name, ' ', o.last_name), 'Guest') as customer_name FROM orders o ORDER BY o.created_at DESC LIMIT 5");
+$recent_orders_stmt->execute();
+$recent_orders_result = $recent_orders_stmt->get_result();
 
 // Get low stock products
 $low_stock_stmt = $conn->prepare("SELECT * FROM products WHERE stock_quantity <= 10 AND stock_quantity > 0 ORDER BY stock_quantity ASC LIMIT 5");
-$low_stock_result = $low_stock_stmt->execute();
+$low_stock_stmt->execute();
+$low_stock_result = $low_stock_stmt->get_result();
 ?>
 
 <style>
@@ -432,7 +434,7 @@ body {
                 <h3>📦 Recent Orders</h3>
             </div>
             <div class="card-body">
-                <?php if ($recent_orders_result && $recent_orders_result->numRows() > 0): ?>
+                <?php if ($recent_orders_result && $recent_orders_result->num_rows > 0): ?>
                     <table class="table">
                         <thead>
                             <tr>
@@ -445,7 +447,7 @@ body {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($order = $recent_orders_result->fetchArray(SQLITE3_ASSOC)): ?>
+                            <?php while ($order = $recent_orders_result->fetch_assoc()): ?>
                                 <tr>
                                     <td>
                                         <strong>#<?php echo str_pad($order['id'], 4, '0', STR_PAD_LEFT); ?></strong>
@@ -503,7 +505,7 @@ body {
                 <h3>⚠️ Low Stock Alert</h3>
             </div>
             <div class="card-body">
-                <?php if ($low_stock_result && $low_stock_result->numRows() > 0): ?>
+                <?php if ($low_stock_result && $low_stock_result->num_rows > 0): ?>
                     <table class="table">
                         <thead>
                             <tr>
@@ -513,7 +515,7 @@ body {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($product = $low_stock_result->fetchArray(SQLITE3_ASSOC)): ?>
+                            <?php while ($product = $low_stock_result->fetch_assoc()): ?>
                                 <tr>
                                     <td>
                                         <div><?php echo htmlspecialchars($product['name']); ?></div>

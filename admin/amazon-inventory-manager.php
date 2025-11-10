@@ -26,17 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $stmt = $conn->prepare("INSERT INTO products (name, author, description, price, stock_quantity, category_id, isbn, publisher, sku, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bindValue(1, $name, SQLITE3_TEXT);
-                $stmt->bindValue(2, $author, SQLITE3_TEXT);
-                $stmt->bindValue(3, $description, SQLITE3_TEXT);
-                $stmt->bindValue(4, $price, SQLITE3_FLOAT);
-                $stmt->bindValue(5, $stock_quantity, SQLITE3_INTEGER);
-                $stmt->bindValue(6, $category_id, SQLITE3_INTEGER);
-                $stmt->bindValue(7, $isbn, SQLITE3_TEXT);
-                $stmt->bindValue(8, $publisher, SQLITE3_TEXT);
-                $stmt->bindValue(9, $sku, SQLITE3_TEXT);
-                $stmt->bindValue(10, $status, SQLITE3_TEXT);
-                
+                $stmt->bind_param("sssdiissss", $name, $author, $description, $price, $stock_quantity, $category_id, $isbn, $publisher, $sku, $status);
+
                 if ($stmt->execute()) {
                     $_SESSION['success_message'] = "Product added successfully!";
                 } else {
@@ -51,9 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_stock = intval($_POST['stock_quantity']);
                 
                 $stmt = $conn->prepare("UPDATE products SET stock_quantity = ? WHERE id = ?");
-                $stmt->bindValue(1, $new_stock, SQLITE3_INTEGER);
-                $stmt->bindValue(2, $product_id, SQLITE3_INTEGER);
-                
+                $stmt->bind_param("ii", $new_stock, $product_id);
+
                 if ($stmt->execute()) {
                     $_SESSION['success_message'] = "Stock updated successfully!";
                 } else {
@@ -72,9 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         case 'delete':
                             $placeholders = str_repeat('?,', count($selected_products) - 1) . '?';
                             $stmt = $conn->prepare("DELETE FROM products WHERE id IN ($placeholders)");
-                            foreach ($selected_products as $index => $id) {
-                                $stmt->bindValue($index + 1, $id, SQLITE3_INTEGER);
-                            }
+                            $types = str_repeat('i', count($selected_products));
+                            $stmt->bind_param($types, ...$selected_products);
                             if ($stmt->execute()) {
                                 $_SESSION['success_message'] = count($selected_products) . " products deleted successfully!";
                             } else {
@@ -85,9 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         case 'publish':
                             $placeholders = str_repeat('?,', count($selected_products) - 1) . '?';
                             $stmt = $conn->prepare("UPDATE products SET status = 'published' WHERE id IN ($placeholders)");
-                            foreach ($selected_products as $index => $id) {
-                                $stmt->bindValue($index + 1, $id, SQLITE3_INTEGER);
-                            }
+                            $types = str_repeat('i', count($selected_products));
+                            $stmt->bind_param($types, ...$selected_products);
                             if ($stmt->execute()) {
                                 $_SESSION['success_message'] = count($selected_products) . " products published!";
                             } else {
@@ -98,9 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         case 'unpublish':
                             $placeholders = str_repeat('?,', count($selected_products) - 1) . '?';
                             $stmt = $conn->prepare("UPDATE products SET status = 'draft' WHERE id IN ($placeholders)");
-                            foreach ($selected_products as $index => $id) {
-                                $stmt->bindValue($index + 1, $id, SQLITE3_INTEGER);
-                            }
+                            $types = str_repeat('i', count($selected_products));
+                            $stmt->bind_param($types, ...$selected_products);
                             if ($stmt->execute()) {
                                 $_SESSION['success_message'] = count($selected_products) . " products unpublished!";
                             } else {
@@ -119,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
     $id_to_delete = intval($_GET['id']);
     $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
-    $stmt->bindValue(1, $id_to_delete, SQLITE3_INTEGER);
+    $stmt->bind_param("i", $id_to_delete);
     if ($stmt->execute()) {
         $_SESSION['success_message'] = 'Product deleted successfully!';
     } else {
@@ -180,24 +167,24 @@ $offset = ($page - 1) * $limit;
 $count_sql = "SELECT COUNT(*) as total FROM products $where_clause";
 if (!empty($params)) {
     $count_stmt = $conn->prepare($count_sql);
-    foreach ($params as $index => $param) {
-        $count_stmt->bindValue($index + 1, $param, SQLITE3_TEXT);
-    }
-    $count_result = $count_stmt->execute();
+    $types = str_repeat('s', count($params));
+    $count_stmt->bind_param($types, ...$params);
+    $count_stmt->execute();
+    $count_result = $count_stmt->get_result();
 } else {
     $count_result = $conn->query($count_sql);
 }
-$total_products = $count_result->fetchArray(SQLITE3_ASSOC)['total'];
+$total_products = $count_result->fetch_assoc()['total'];
 $total_pages = ceil($total_products / $limit);
 
 // Get products
 $products_sql = "SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id $where_clause ORDER BY p.id DESC LIMIT $limit OFFSET $offset";
 if (!empty($params)) {
     $products_stmt = $conn->prepare($products_sql);
-    foreach ($params as $index => $param) {
-        $products_stmt->bindValue($index + 1, $param, SQLITE3_TEXT);
-    }
-    $products_result = $products_stmt->execute();
+    $types = str_repeat('s', count($params));
+    $products_stmt->bind_param($types, ...$params);
+    $products_stmt->execute();
+    $products_result = $products_stmt->get_result();
 } else {
     $products_result = $conn->query($products_sql);
 }
@@ -206,11 +193,11 @@ if (!empty($params)) {
 $categories_result = $conn->query("SELECT id, name FROM categories WHERE status = 'active' ORDER BY name");
 
 // Get statistics
-$total_products_count = $conn->query("SELECT COUNT(*) as count FROM products")->fetchArray(SQLITE3_ASSOC)['count'];
-$published_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 'published'")->fetchArray(SQLITE3_ASSOC)['count'];
-$draft_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 'draft'")->fetchArray(SQLITE3_ASSOC)['count'];
-$low_stock_count = $conn->query("SELECT COUNT(*) as count FROM products WHERE stock_quantity <= 10 AND stock_quantity > 0")->fetchArray(SQLITE3_ASSOC)['count'];
-$out_of_stock_count = $conn->query("SELECT COUNT(*) as count FROM products WHERE stock_quantity = 0")->fetchArray(SQLITE3_ASSOC)['count'];
+$total_products_count = $conn->query("SELECT COUNT(*) as count FROM products")->fetch_assoc()['count'];
+$published_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 'published'")->fetch_assoc()['count'];
+$draft_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 'draft'")->fetch_assoc()['count'];
+$low_stock_count = $conn->query("SELECT COUNT(*) as count FROM products WHERE stock_quantity <= 10 AND stock_quantity > 0")->fetch_assoc()['count'];
+$out_of_stock_count = $conn->query("SELECT COUNT(*) as count FROM products WHERE stock_quantity = 0")->fetch_assoc()['count'];
 
 injectProfessionalCSS();
 ?>
@@ -303,7 +290,7 @@ injectProfessionalCSS();
                 <label class="form-label-professional">📂 Category</label>
                 <select name="category" class="form-control-professional form-select-professional">
                     <option value="">All Categories</option>
-                    <?php while($cat = $categories_result->fetchArray(SQLITE3_ASSOC)): ?>
+                    <?php while($cat = $categories_result->fetch_assoc()): ?>
                         <option value="<?php echo $cat['id']; ?>" <?php echo ($category_filter == $cat['id']) ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($cat['name']); ?>
                         </option>
@@ -385,8 +372,8 @@ injectProfessionalCSS();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($products_result && $products_result->numRows() > 0): ?>
-                            <?php while($product = $products_result->fetchArray(SQLITE3_ASSOC)): ?>
+                        <?php if ($products_result && $products_result->num_rows > 0): ?>
+                            <?php while($product = $products_result->fetch_assoc()): ?>
                                 <tr class="fade-in">
                                     <td>
                                         <input type="checkbox" name="selected_products[]" value="<?php echo $product['id']; ?>" class="product-checkbox">
@@ -555,10 +542,10 @@ injectProfessionalCSS();
                                 <label class="form-label-professional">📂 Category</label>
                                 <select class="form-control-professional form-select-professional" name="category_id">
                                     <option value="">Select Category</option>
-                                    <?php 
+                                    <?php
                                     // Reset categories result for reuse
                                     $categories_result = $conn->query("SELECT id, name FROM categories WHERE status = 'active' ORDER BY name");
-                                    while($cat = $categories_result->fetchArray(SQLITE3_ASSOC)): ?>
+                                    while($cat = $categories_result->fetch_assoc()): ?>
                                         <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
                                     <?php endwhile; ?>
                                 </select>

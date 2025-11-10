@@ -22,15 +22,16 @@ class UserProfile {
     public function getUserProfile($user_id) {
         try {
             $stmt = $this->conn->prepare("SELECT id, full_name, email, phone, address, city, state, zip_code, country, created_at, updated_at FROM users WHERE id = ?");
-            $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
-            $result = $stmt->execute();
-            
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
             if ($result) {
-                $user = $result->fetchArray(SQLITE3_ASSOC);
+                $user = $result->fetch_assoc();
                 $stmt->close();
                 return $user;
             }
-            
+
             return null;
             
         } catch (Exception $e) {
@@ -75,15 +76,13 @@ class UserProfile {
             // Add user_id to values for WHERE clause
             $values[] = $user_id;
             $types .= 'i';
-            
+
             // Build query
-            $query = "UPDATE users SET " . implode(', ', $fields) . ", updated_at = datetime('now') WHERE id = ?";
-            
+            $query = "UPDATE users SET " . implode(', ', $fields) . ", updated_at = NOW() WHERE id = ?";
+
             // Prepare and execute
             $stmt = $this->conn->prepare($query);
-            for ($i = 0; $i < count($values); $i++) {
-                $stmt->bindValue($i + 1, $values[$i], ($i === count($values) - 1) ? SQLITE3_INTEGER : SQLITE3_TEXT);
-            }
+            $stmt->bind_param($types, ...$values);
             $result = $stmt->execute();
             $stmt->close();
             
@@ -120,17 +119,18 @@ class UserProfile {
         try {
             // Get current password hash
             $stmt = $this->conn->prepare("SELECT password FROM users WHERE id = ?");
-            $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
-            $result = $stmt->execute();
-            
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
             if (!$result) {
                 return [
                     'success' => false,
                     'error' => 'User not found.'
                 ];
             }
-            
-            $user = $result->fetchArray(SQLITE3_ASSOC);
+
+            $user = $result->fetch_assoc();
             $stmt->close();
             
             // Verify current password
@@ -151,11 +151,10 @@ class UserProfile {
             
             // Hash new password
             $new_password_hash = password_hash($new_password, PASSWORD_DEFAULT);
-            
+
             // Update password
-            $update_stmt = $this->conn->prepare("UPDATE users SET password = ?, updated_at = datetime('now') WHERE id = ?");
-            $update_stmt->bindValue(1, $new_password_hash, SQLITE3_TEXT);
-            $update_stmt->bindValue(2, $user_id, SQLITE3_INTEGER);
+            $update_stmt = $this->conn->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
+            $update_stmt->bind_param("si", $new_password_hash, $user_id);
             $update_result = $update_stmt->execute();
             $update_stmt->close();
             
@@ -198,15 +197,15 @@ class UserProfile {
                 ORDER BY o.created_at DESC
                 LIMIT ?
             ");
-            $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
-            $stmt->bindValue(2, $limit, SQLITE3_INTEGER);
-            $result = $stmt->execute();
-            
+            $stmt->bind_param("ii", $user_id, $limit);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
             $orders = [];
-            while ($order = $result->fetchArray(SQLITE3_ASSOC)) {
+            while ($order = $result->fetch_assoc()) {
                 $orders[] = $order;
             }
-            
+
             $stmt->close();
             return $orders;
             
@@ -240,14 +239,15 @@ class UserProfile {
                 WHERE w.user_id = ?
                 ORDER BY w.created_at DESC
             ");
-            $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
-            $result = $stmt->execute();
-            
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
             $wishlist = [];
-            while ($item = $result->fetchArray(SQLITE3_ASSOC)) {
+            while ($item = $result->fetch_assoc()) {
                 $wishlist[] = $item;
             }
-            
+
             $stmt->close();
             return $wishlist;
             
@@ -268,11 +268,11 @@ class UserProfile {
         try {
             // Check if item already in wishlist
             $check_stmt = $this->conn->prepare("SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?");
-            $check_stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
-            $check_stmt->bindValue(2, $product_id, SQLITE3_INTEGER);
-            $check_result = $check_stmt->execute();
-            
-            if ($check_result && $check_result->fetchArray(SQLITE3_ASSOC)) {
+            $check_stmt->bind_param("ii", $user_id, $product_id);
+            $check_stmt->execute();
+            $check_result = $check_stmt->get_result();
+
+            if ($check_result && $check_result->fetch_assoc()) {
                 $check_stmt->close();
                 return [
                     'success' => false,
@@ -280,11 +280,10 @@ class UserProfile {
                 ];
             }
             $check_stmt->close();
-            
+
             // Add to wishlist
-            $stmt = $this->conn->prepare("INSERT INTO wishlist (user_id, product_id, created_at) VALUES (?, ?, datetime('now'))");
-            $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
-            $stmt->bindValue(2, $product_id, SQLITE3_INTEGER);
+            $stmt = $this->conn->prepare("INSERT INTO wishlist (user_id, product_id, created_at) VALUES (?, ?, NOW())");
+            $stmt->bind_param("ii", $user_id, $product_id);
             $result = $stmt->execute();
             $stmt->close();
             
@@ -319,8 +318,7 @@ class UserProfile {
     public function removeFromWishlist($user_id, $product_id) {
         try {
             $stmt = $this->conn->prepare("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?");
-            $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
-            $stmt->bindValue(2, $product_id, SQLITE3_INTEGER);
+            $stmt->bind_param("ii", $user_id, $product_id);
             $result = $stmt->execute();
             $stmt->close();
             

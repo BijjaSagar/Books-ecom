@@ -36,66 +36,66 @@ switch ($date_range) {
 }
 
 // Get sales data
-$sales_stmt = $conn->prepare("SELECT 
-    DATE(created_at) as order_date, 
+$sales_stmt = $conn->prepare("SELECT
+    DATE(created_at) as order_date,
     SUM(total_amount) as daily_sales,
     COUNT(*) as order_count
-    FROM orders 
+    FROM orders
     WHERE DATE(created_at) BETWEEN ? AND ?
-    GROUP BY DATE(created_at) 
+    GROUP BY DATE(created_at)
     ORDER BY order_date");
-$sales_stmt->bindValue(1, $start_date, SQLITE3_TEXT);
-$sales_stmt->bindValue(2, $end_date, SQLITE3_TEXT);
-$sales_result = $sales_stmt->execute();
+$sales_stmt->bind_param("ss", $start_date, $end_date);
+$sales_stmt->execute();
+$sales_result = $sales_stmt->get_result();
 
 $sales_data = [];
 $total_sales = 0;
 $total_orders = 0;
-while ($row = $sales_result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $sales_result->fetch_assoc()) {
     $sales_data[] = $row;
     $total_sales += $row['daily_sales'];
     $total_orders += $row['order_count'];
 }
 
 // Get top selling products
-$top_products_stmt = $conn->prepare("SELECT 
-    p.name, 
-    p.author, 
-    SUM(oi.quantity) as total_sold, 
+$top_products_stmt = $conn->prepare("SELECT
+    p.name,
+    p.author,
+    SUM(oi.quantity) as total_sold,
     SUM(oi.total) as total_revenue
-    FROM order_items oi 
-    JOIN products p ON oi.product_id = p.id 
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.id
     JOIN orders o ON oi.order_id = o.id
     WHERE DATE(o.created_at) BETWEEN ? AND ?
-    GROUP BY oi.product_id 
-    ORDER BY total_sold DESC 
+    GROUP BY oi.product_id
+    ORDER BY total_sold DESC
     LIMIT 10");
-$top_products_stmt->bindValue(1, $start_date, SQLITE3_TEXT);
-$top_products_stmt->bindValue(2, $end_date, SQLITE3_TEXT);
-$top_products_result = $top_products_stmt->execute();
+$top_products_stmt->bind_param("ss", $start_date, $end_date);
+$top_products_stmt->execute();
+$top_products_result = $top_products_stmt->get_result();
 
 // Get order status distribution
-$status_distribution_stmt = $conn->prepare("SELECT 
-    order_status, 
-    COUNT(*) as count 
-    FROM orders 
+$status_distribution_stmt = $conn->prepare("SELECT
+    order_status,
+    COUNT(*) as count
+    FROM orders
     WHERE DATE(created_at) BETWEEN ? AND ?
     GROUP BY order_status");
-$status_distribution_stmt->bindValue(1, $start_date, SQLITE3_TEXT);
-$status_distribution_stmt->bindValue(2, $end_date, SQLITE3_TEXT);
-$status_distribution_result = $status_distribution_stmt->execute();
+$status_distribution_stmt->bind_param("ss", $start_date, $end_date);
+$status_distribution_stmt->execute();
+$status_distribution_result = $status_distribution_stmt->get_result();
 
 $status_data = [];
-while ($row = $status_distribution_result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $status_distribution_result->fetch_assoc()) {
     $status_data[$row['order_status']] = $row['count'];
 }
 
 // Get customer data
 $new_customers_stmt = $conn->prepare("SELECT COUNT(*) as new_customers FROM users WHERE DATE(created_at) BETWEEN ? AND ? AND role = 'customer'");
-$new_customers_stmt->bindValue(1, $start_date, SQLITE3_TEXT);
-$new_customers_stmt->bindValue(2, $end_date, SQLITE3_TEXT);
-$new_customers_result = $new_customers_stmt->execute();
-$new_customers = $new_customers_result->fetchArray(SQLITE3_ASSOC)['new_customers'];
+$new_customers_stmt->bind_param("ss", $start_date, $end_date);
+$new_customers_stmt->execute();
+$new_customers_result = $new_customers_stmt->get_result();
+$new_customers = $new_customers_result->fetch_assoc()['new_customers'];
 
 // Calculate key metrics
 $avg_order_value = $total_orders > 0 ? $total_sales / $total_orders : 0;
@@ -306,7 +306,7 @@ injectProfessionalCSS();
             </h3>
         </div>
         <div class="card-body-professional" style="padding: 0;">
-            <?php if ($top_products_result && $top_products_result->numRows() > 0): ?>
+            <?php if ($top_products_result && $top_products_result->num_rows > 0): ?>
                 <table class="table-professional">
                     <thead>
                         <tr>
@@ -318,9 +318,9 @@ injectProfessionalCSS();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php 
+                        <?php
                         $rank = 1;
-                        while ($product = $top_products_result->fetchArray(SQLITE3_ASSOC)): ?>
+                        while ($product = $top_products_result->fetch_assoc()): ?>
                             <tr class="fade-in">
                                 <td>
                                     <div style="width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--font-size-sm);">
@@ -423,10 +423,10 @@ injectProfessionalCSS();
                                 <span>📦</span> Inventory Optimization
                             </div>
                             <div style="font-size: var(--font-size-sm); margin-top: var(--spacing-2); color: var(--gray-700);">
-                                <?php 
-                                if ($top_products_result && $top_products_result->numRows() > 0) {
-                                    $top_products_result->reset();
-                                    $top_product = $top_products_result->fetchArray(SQLITE3_ASSOC);
+                                <?php
+                                if ($top_products_result && $top_products_result->num_rows > 0) {
+                                    $top_products_result->data_seek(0);
+                                    $top_product = $top_products_result->fetch_assoc();
                                     echo "Your best-selling product is '{$top_product['name']}'. Ensure adequate stock levels and consider creating variants or related products.";
                                 } else {
                                     echo "Regularly review inventory levels and sales trends to optimize stock and avoid overstock or stockouts.";

@@ -18,32 +18,17 @@ if ($product_id <= 0) {
 }
 
 // Get product details with category information
-// Handle both MySQLi and SQLite3 prepared statements
-if ($conn instanceof SQLite3) {
-    // SQLite3 approach
-    $stmt = $conn->prepare("
-        SELECT p.*, c.name as category_name, c.slug as category_slug 
-        FROM products p 
-        LEFT JOIN categories c ON p.category_id = c.id 
-        WHERE p.id = ? AND (p.status = 'active' OR p.status IS NULL)
-    ");
-    $stmt->bindValue(1, $product_id, SQLITE3_INTEGER);
-    $result = $stmt->execute();
-    $book = $result->fetchArray(SQLITE3_ASSOC);
-} else {
-    // MySQLi approach
-    $stmt = $conn->prepare("
-        SELECT p.*, c.name as category_name, c.slug as category_slug 
-        FROM products p 
-        LEFT JOIN categories c ON p.category_id = c.id 
-        WHERE p.id = ? AND (p.status = 'active' OR p.status IS NULL)
-    ");
-    $stmt->bind_param("i", $product_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $book = $result->fetch_assoc();
-    $stmt->close();
-}
+$stmt = $conn->prepare("
+    SELECT p.*, c.name as category_name, c.slug as category_slug
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.id = ? AND (p.status = 'active' OR p.status IS NULL)
+");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$book = $result->fetch_assoc();
+$stmt->close();
 
 if (!$book) {
     $page_title_override = "Product Not Found - Bookory";
@@ -56,34 +41,17 @@ if (!$book) {
 // Get related products (same category)
 $related_products = [];
 if (!empty($book['category_id'])) {
-    if ($conn instanceof SQLite3) {
-        // SQLite3 approach
-        $related_stmt = $conn->prepare("
-            SELECT * FROM products 
-            WHERE category_id = ? AND id != ? AND (status = 'active' OR status IS NULL)
-            ORDER BY RANDOM() 
-            LIMIT 4
-        ");
-        $related_stmt->bindValue(1, $book['category_id'], SQLITE3_INTEGER);
-        $related_stmt->bindValue(2, $product_id, SQLITE3_INTEGER);
-        $related_result = $related_stmt->execute();
-        while ($row = $related_result->fetchArray(SQLITE3_ASSOC)) {
-            $related_products[] = $row;
-        }
-    } else {
-        // MySQLi approach
-        $related_stmt = $conn->prepare("
-            SELECT * FROM products 
-            WHERE category_id = ? AND id != ? AND (status = 'active' OR status IS NULL)
-            ORDER BY RAND() 
-            LIMIT 4
-        ");
-        $related_stmt->bind_param("ii", $book['category_id'], $product_id);
-        $related_stmt->execute();
-        $related_result = $related_stmt->get_result();
-        $related_products = $related_result->fetch_all(MYSQLI_ASSOC);
-        $related_stmt->close();
-    }
+    $related_stmt = $conn->prepare("
+        SELECT * FROM products
+        WHERE category_id = ? AND id != ? AND (status = 'active' OR status IS NULL)
+        ORDER BY RAND()
+        LIMIT 4
+    ");
+    $related_stmt->bind_param("ii", $book['category_id'], $product_id);
+    $related_stmt->execute();
+    $related_result = $related_stmt->get_result();
+    $related_products = $related_result->fetch_all(MYSQLI_ASSOC);
+    $related_stmt->close();
 }
 
 // Calculate pricing information

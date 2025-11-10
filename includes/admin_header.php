@@ -17,7 +17,7 @@ $settings_query = "SELECT setting_key, setting_value FROM site_settings";
 $settings_result = $conn->query($settings_query);
 $settings = [];
 if ($settings_result) {
-    while ($row = $settings_result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $settings_result->fetch_assoc()) {
         $settings[$row['setting_key']] = $row['setting_value'];
     }
 }

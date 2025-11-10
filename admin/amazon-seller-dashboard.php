@@ -4,28 +4,30 @@ include '../includes/admin_header.php';
 include 'includes/professional-components.php';
 
 // Get key metrics
-$total_products = $conn->query("SELECT COUNT(*) as count FROM products")->fetchArray(SQLITE3_ASSOC)['count'];
-$active_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 'published'")->fetchArray(SQLITE3_ASSOC)['count'];
-$low_stock_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE stock_quantity <= 10 AND stock_quantity > 0")->fetchArray(SQLITE3_ASSOC)['count'];
-$out_of_stock_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE stock_quantity = 0")->fetchArray(SQLITE3_ASSOC)['count'];
+$total_products = $conn->query("SELECT COUNT(*) as count FROM products")->fetch_assoc()['count'];
+$active_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE status = 'published'")->fetch_assoc()['count'];
+$low_stock_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE stock_quantity <= 10 AND stock_quantity > 0")->fetch_assoc()['count'];
+$out_of_stock_products = $conn->query("SELECT COUNT(*) as count FROM products WHERE stock_quantity = 0")->fetch_assoc()['count'];
 
 // Get recent orders
-$recent_orders_stmt = $conn->prepare("SELECT o.*, COALESCE(o.first_name || ' ' || o.last_name, 'Guest') as customer_name FROM orders o ORDER BY o.created_at DESC LIMIT 5");
-$recent_orders_result = $recent_orders_stmt->execute();
+$recent_orders_stmt = $conn->prepare("SELECT o.*, COALESCE(CONCAT(o.first_name, ' ', o.last_name), 'Guest') as customer_name FROM orders o ORDER BY o.created_at DESC LIMIT 5");
+$recent_orders_stmt->execute();
+$recent_orders_result = $recent_orders_stmt->get_result();
 
 // Get sales data for chart
-$sales_data_stmt = $conn->prepare("SELECT 
-    DATE(created_at) as order_date, 
+$sales_data_stmt = $conn->prepare("SELECT
+    DATE(created_at) as order_date,
     SUM(total_amount) as daily_sales,
     COUNT(*) as order_count
-    FROM orders 
-    WHERE created_at >= date('now', '-7 days')
-    GROUP BY DATE(created_at) 
+    FROM orders
+    WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+    GROUP BY DATE(created_at)
     ORDER BY order_date");
-$sales_data_result = $sales_data_stmt->execute();
+$sales_data_stmt->execute();
+$sales_data_result = $sales_data_stmt->get_result();
 
 $sales_chart_data = [];
-while ($row = $sales_data_result->fetchArray(SQLITE3_ASSOC)) {
+while ($row = $sales_data_result->fetch_assoc()) {
     $sales_chart_data[] = $row;
 }
 
@@ -235,9 +237,9 @@ injectProfessionalCSS();
                     </tr>
                 </thead>
                 <tbody>
-                    <?php 
+                    <?php
                     $order_count = 0;
-                    while ($order = $recent_orders_result->fetchArray(SQLITE3_ASSOC)): 
+                    while ($order = $recent_orders_result->fetch_assoc()):
                         $order_count++;
                     ?>
                         <tr class="fade-in">
@@ -297,11 +299,12 @@ injectProfessionalCSS();
                     </h4>
                     <?php
                     $best_sellers_stmt = $conn->prepare("SELECT p.name, p.author, SUM(oi.quantity) as total_sold FROM order_items oi JOIN products p ON oi.product_id = p.id GROUP BY oi.product_id ORDER BY total_sold DESC LIMIT 3");
-                    $best_sellers_result = $best_sellers_stmt->execute();
+                    $best_sellers_stmt->execute();
+                    $best_sellers_result = $best_sellers_stmt->get_result();
                     $best_seller_count = 0;
                     ?>
                     <div style="display: flex; flex-direction: column; gap: var(--spacing-3);">
-                        <?php while ($product = $best_sellers_result->fetchArray(SQLITE3_ASSOC)): 
+                        <?php while ($product = $best_sellers_result->fetch_assoc()):
                             $best_seller_count++;
                         ?>
                             <div style="display: flex; align-items: center; gap: var(--spacing-3); padding: var(--spacing-3); background: var(--gray-100); border-radius: var(--border-radius-sm);">

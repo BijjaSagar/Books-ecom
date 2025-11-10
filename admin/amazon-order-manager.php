@@ -11,8 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     
     if (in_array($new_status, $allowed_statuses)) {
         $stmt = $conn->prepare("UPDATE orders SET order_status = ? WHERE id = ?");
-        $stmt->bindValue(1, $new_status, SQLITE3_TEXT);
-        $stmt->bindValue(2, $order_id, SQLITE3_INTEGER);
+        $stmt->bind_param("si", $new_status, $order_id);
         if ($stmt->execute()) {
             $_SESSION['success_message'] = "Order #{$order_id} status updated to " . ucfirst($new_status);
         } else {
@@ -65,40 +64,40 @@ $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_c
 $count_sql = "SELECT COUNT(*) as total FROM orders o $where_clause";
 if (!empty($params)) {
     $count_stmt = $conn->prepare($count_sql);
-    foreach ($params as $index => $param) {
-        $count_stmt->bindValue($index + 1, $param, SQLITE3_TEXT);
-    }
-    $count_result = $count_stmt->execute();
-    $total_orders = $count_result->fetchArray(SQLITE3_ASSOC)['total'];
+    $types = str_repeat('s', count($params));
+    $count_stmt->bind_param($types, ...$params);
+    $count_stmt->execute();
+    $count_result = $count_stmt->get_result();
+    $total_orders = $count_result->fetch_assoc()['total'];
 } else {
-    $total_orders = $conn->query($count_sql)->fetchArray(SQLITE3_ASSOC)['total'];
+    $total_orders = $conn->query($count_sql)->fetch_assoc()['total'];
 }
 
 $total_pages = ceil($total_orders / $limit);
 
 // Get orders
-$orders_sql = "SELECT o.*, 
-               COALESCE(o.first_name || ' ' || o.last_name, 'Guest') as customer_name
-               FROM orders o 
-               $where_clause 
-               ORDER BY o.created_at DESC 
+$orders_sql = "SELECT o.*,
+               COALESCE(CONCAT(o.first_name, ' ', o.last_name), 'Guest') as customer_name
+               FROM orders o
+               $where_clause
+               ORDER BY o.created_at DESC
                LIMIT $limit OFFSET $offset";
 
 if (!empty($params)) {
     $orders_stmt = $conn->prepare($orders_sql);
-    foreach ($params as $index => $param) {
-        $orders_stmt->bindValue($index + 1, $param, SQLITE3_TEXT);
-    }
-    $orders_result = $orders_stmt->execute();
+    $types = str_repeat('s', count($params));
+    $orders_stmt->bind_param($types, ...$params);
+    $orders_stmt->execute();
+    $orders_result = $orders_stmt->get_result();
 } else {
     $orders_result = $conn->query($orders_sql);
 }
 
 // Get order statistics
-$total_revenue = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE order_status IN ('completed', 'delivered')")->fetchArray(SQLITE3_ASSOC)['total'] ?? 0;
-$pending_orders = $conn->query("SELECT COUNT(*) as count FROM orders WHERE order_status = 'pending'")->fetchArray(SQLITE3_ASSOC)['count'];
-$today_orders = $conn->query("SELECT COUNT(*) as count FROM orders WHERE DATE(created_at) = DATE('now')")->fetchArray(SQLITE3_ASSOC)['count'];
-$processing_orders = $conn->query("SELECT COUNT(*) as count FROM orders WHERE order_status = 'processing'")->fetchArray(SQLITE3_ASSOC)['count'];
+$total_revenue = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE order_status IN ('completed', 'delivered')")->fetch_assoc()['total'] ?? 0;
+$pending_orders = $conn->query("SELECT COUNT(*) as count FROM orders WHERE order_status = 'pending'")->fetch_assoc()['count'];
+$today_orders = $conn->query("SELECT COUNT(*) as count FROM orders WHERE DATE(created_at) = CURDATE()")->fetch_assoc()['count'];
+$processing_orders = $conn->query("SELECT COUNT(*) as count FROM orders WHERE order_status = 'processing'")->fetch_assoc()['count'];
 
 injectProfessionalCSS();
 ?>
@@ -247,8 +246,8 @@ injectProfessionalCSS();
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if ($orders_result && $orders_result->numRows() > 0): ?>
-                        <?php while ($order = $orders_result->fetchArray(SQLITE3_ASSOC)): ?>
+                    <?php if ($orders_result && $orders_result->num_rows > 0): ?>
+                        <?php while ($order = $orders_result->fetch_assoc()): ?>
                             <tr class="fade-in">
                                 <td>
                                     <div style="font-weight: 700; color: var(--primary); font-size: var(--font-size-lg);">
@@ -281,9 +280,10 @@ injectProfessionalCSS();
                                     <?php
                                     // Get order items count
                                     $items_stmt = $conn->prepare("SELECT COUNT(*) as count FROM order_items WHERE order_id = ?");
-                                    $items_stmt->bindValue(1, $order['id'], SQLITE3_INTEGER);
-                                    $items_result = $items_stmt->execute();
-                                    $items_count = $items_result->fetchArray(SQLITE3_ASSOC)['count'];
+                                    $items_stmt->bind_param("i", $order['id']);
+                                    $items_stmt->execute();
+                                    $items_result = $items_stmt->get_result();
+                                    $items_count = $items_result->fetch_assoc()['count'];
                                     ?>
                                     <div style="display: flex; align-items: center; gap: var(--spacing-2);">
                                         <span style="background: linear-gradient(135deg, var(--info) 0%, #138a9b 100%); color: white; padding: 4px 8px; border-radius: 12px; font-size: var(--font-size-xs); font-weight: 600;">
