@@ -534,6 +534,274 @@ class AnalyticsManager {
     }
 
     /**
+     * Get cohort analysis
+     */
+    public function getCohortAnalysis($start_month = null) {
+        try {
+            if (!$start_month) {
+                $start_month = date('Y-m-d', strtotime('-12 months'));
+            }
+
+            $result = $this->conn->query("
+                SELECT * FROM vw_cohort_retention
+                WHERE cohort_month >= '$start_month'
+                ORDER BY cohort_month DESC, month_number
+            ");
+
+            return $result->fetch_all(MYSQLI_ASSOC);
+        } catch (Exception $e) {
+            error_log("[AnalyticsManager] Cohort Analysis Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get customer segments summary
+     */
+    public function getCustomerSegments() {
+        try {
+            $result = $this->conn->query("
+                SELECT * FROM vw_customer_segments_summary
+            ");
+
+            return $result->fetch_all(MYSQLI_ASSOC);
+        } catch (Exception $e) {
+            error_log("[AnalyticsManager] Customer Segments Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get customers in a specific segment
+     */
+    public function getSegmentCustomers($segment_type, $limit = 50) {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT
+                    cs.user_id,
+                    u.name,
+                    u.email,
+                    cs.segment_type,
+                    cs.total_orders,
+                    cs.total_spent,
+                    cs.churn_risk,
+                    cs.engagement_score
+                FROM customer_segments cs
+                JOIN users u ON cs.user_id = u.id
+                WHERE cs.segment_type = ?
+                ORDER BY cs.segment_score DESC
+                LIMIT ?
+            ");
+
+            $stmt->bind_param("si", $segment_type, $limit);
+            $stmt->execute();
+            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } catch (Exception $e) {
+            error_log("[AnalyticsManager] Segment Customers Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get product performance analytics
+     */
+    public function getProductAnalytics($product_id = null, $days = 30) {
+        try {
+            $start_date = date('Y-m-d', strtotime("-$days days"));
+
+            if ($product_id) {
+                $stmt = $this->conn->prepare("
+                    SELECT
+                        analysis_date,
+                        views,
+                        add_to_cart,
+                        purchases,
+                        revenue,
+                        returns,
+                        conversion_rate,
+                        view_to_cart_rate
+                    FROM product_analytics
+                    WHERE product_id = ? AND analysis_date >= ?
+                    ORDER BY analysis_date DESC
+                ");
+
+                $stmt->bind_param("is", $product_id, $start_date);
+            } else {
+                $stmt = $this->conn->prepare("
+                    SELECT
+                        p.id,
+                        p.title,
+                        SUM(pa.views) as total_views,
+                        SUM(pa.purchases) as total_purchases,
+                        SUM(pa.revenue) as total_revenue,
+                        AVG(pa.conversion_rate) as avg_conversion,
+                        AVG(pa.view_to_cart_rate) as avg_view_to_cart
+                    FROM product_analytics pa
+                    JOIN products p ON pa.product_id = p.id
+                    WHERE pa.analysis_date >= ?
+                    GROUP BY pa.product_id
+                    ORDER BY total_revenue DESC
+                ");
+
+                $stmt->bind_param("s", $start_date);
+            }
+
+            $stmt->execute();
+            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } catch (Exception $e) {
+            error_log("[AnalyticsManager] Product Analytics Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get channel performance
+     */
+    public function getChannelPerformance($days = 30) {
+        try {
+            $start_date = date('Y-m-d', strtotime("-$days days"));
+
+            $result = $this->conn->query("
+                SELECT * FROM vw_channel_performance
+                WHERE analysis_date >= '$start_date'
+                ORDER BY total_revenue DESC
+            ");
+
+            return $result->fetch_all(MYSQLI_ASSOC);
+        } catch (Exception $e) {
+            error_log("[AnalyticsManager] Channel Performance Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get predictive metrics for customer
+     */
+    public function getPredictiveMetrics($user_id) {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT
+                    metric_type,
+                    metric_value,
+                    confidence,
+                    prediction_date,
+                    actual_result,
+                    accuracy_score
+                FROM predictive_metrics
+                WHERE user_id = ?
+                ORDER BY analysis_timestamp DESC
+                LIMIT 10
+            ");
+
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        } catch (Exception $e) {
+            error_log("[AnalyticsManager] Predictive Metrics Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get custom reports list
+     */
+    public function getCustomReports($is_active = true) {
+        try {
+            $query = "
+                SELECT
+                    id,
+                    report_name,
+                    description,
+                    report_type,
+                    schedule_frequency,
+                    last_run,
+                    next_run,
+                    is_active
+                FROM custom_reports
+            ";
+
+            if ($is_active !== null) {
+                $query .= " WHERE is_active = " . ($is_active ? "TRUE" : "FALSE");
+            }
+
+            $query .= " ORDER BY updated_at DESC";
+
+            $result = $this->conn->query($query);
+            return $result->fetch_all(MYSQLI_ASSOC);
+        } catch (Exception $e) {
+            error_log("[AnalyticsManager] Custom Reports Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get report data
+     */
+    public function getReportData($report_id) {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT
+                    rr.id,
+                    rr.run_date,
+                    rr.data_json,
+                    rr.row_count,
+                    cr.report_name
+                FROM report_runs rr
+                JOIN custom_reports cr ON rr.report_id = cr.id
+                WHERE rr.report_id = ?
+                ORDER BY rr.run_date DESC
+                LIMIT 1
+            ");
+
+            $stmt->bind_param("i", $report_id);
+            $stmt->execute();
+            $result = $stmt->get_result()->fetch_assoc();
+
+            if ($result && $result['data_json']) {
+                $result['data'] = json_decode($result['data_json'], true);
+            }
+
+            return $result;
+        } catch (Exception $e) {
+            error_log("[AnalyticsManager] Get Report Data Error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Get analytics goals
+     */
+    public function getAnalyticsGoals($only_active = false) {
+        try {
+            $query = "
+                SELECT
+                    id,
+                    goal_name,
+                    goal_type,
+                    target_value,
+                    current_value,
+                    target_date,
+                    progress_percentage,
+                    is_achieved,
+                    achieved_date
+                FROM analytics_goals
+            ";
+
+            if ($only_active) {
+                $query .= " WHERE target_date >= CURDATE() AND is_achieved = FALSE";
+            }
+
+            $query .= " ORDER BY target_date ASC";
+
+            $result = $this->conn->query($query);
+            return $result->fetch_all(MYSQLI_ASSOC);
+        } catch (Exception $e) {
+            error_log("[AnalyticsManager] Analytics Goals Error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Get client IP
      */
     private function getClientIP() {
