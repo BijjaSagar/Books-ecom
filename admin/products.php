@@ -395,7 +395,7 @@ renderProfessionalJavaScript();
 
     <!-- Professional Add/Edit Book Modal - Comprehensive Form -->
     <div class="modal-professional" id="productModal">
-        <div class="modal-content-professional" style="max-width: 900px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-content-professional" style="max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
             <div class="modal-header-professional">
                 <h4 class="modal-title" id="productModalLabel">
                     <span>📚</span> Add New Book
@@ -714,12 +714,17 @@ renderProfessionalJavaScript();
                     </div>
 
                     <div class="tab-content" id="bookTabContent" style="display: none;"></div>
-                    <div class="modal-footer-professional">
+
+                    <!-- Sticky Modal Footer -->
+                    <div class="modal-footer-professional" style="background-color: #f8f9fa; border-top: 1px solid #e9ecef; flex-shrink: 0; margin-top: auto;">
                         <button type="button" class="btn-professional btn-outline-professional" onclick="closeModal('productModal')">
                             <span>❌</span> Cancel
                         </button>
-                        <button type="submit" class="btn-professional btn-success-professional" id="submitBtn">
-                            <span>💾</span> Save Product
+                        <button type="submit" class="btn-professional btn-success-professional" id="submitBtn" style="min-width: 140px;">
+                            <span id="submitBtnText">💾 Save Product</span>
+                            <span id="submitSpinner" style="display: none; margin-left: 0.5rem;">
+                                <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite;"></i>
+                            </span>
                         </button>
                     </div>
                 </form>
@@ -1158,7 +1163,147 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🎯 Initializing UI...');
     updateStepUI();
     console.log('✅ Initialization complete!');
+
+    // ============================================
+    // FORM SUBMISSION HANDLER
+    // ============================================
+
+    productForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        console.log('📝 Form submitted');
+
+        // Validate required fields
+        const title = document.getElementById('title').value.trim();
+        const author = document.getElementById('author').value.trim();
+        const description = document.getElementById('description').value.trim();
+        const price = document.getElementById('price').value.trim();
+        const stock_quantity = document.getElementById('stock_quantity').value.trim();
+
+        if (!title || !author || !description || !price || !stock_quantity) {
+            alert('❌ Please fill in all required fields:\n- Title\n- Author\n- Description\n- Price\n- Stock Quantity');
+            return;
+        }
+
+        // Show loading state
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        document.getElementById('submitBtnText').style.display = 'none';
+        document.getElementById('submitSpinner').style.display = 'inline';
+
+        console.log('⏳ Sending form data to server...');
+
+        // Send form data via AJAX
+        const formData = new FormData(productForm);
+
+        fetch('products.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('📥 Response received:', response.status);
+            return response.text();
+        })
+        .then(data => {
+            console.log('📥 Response data:', data);
+
+            // Check if redirect happened (success) or error
+            if (data.includes('success') || data.includes('Product saved') || response.status === 200) {
+                console.log('✅ Product saved successfully');
+
+                // Close modal
+                closeModal('productModal');
+
+                // Show success message
+                showSaveSuccessMessage();
+
+                // Reload page
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else if (data.includes('error') || data.includes('Error')) {
+                console.error('❌ Save failed:', data);
+                showSaveErrorMessage('Failed to save product. Please try again.');
+
+                // Reset button
+                resetSubmitButton();
+            } else {
+                // Assume success if no error message
+                console.log('✅ Product saved');
+                closeModal('productModal');
+                showSaveSuccessMessage();
+
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error submitting form:', error);
+            showSaveErrorMessage('Error: ' + error.message);
+
+            // Reset button
+            resetSubmitButton();
+        });
+    });
+
+    console.log('✅ Form submission handler added');
 });
+
+// Reset submit button state
+function resetSubmitButton() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = false;
+    document.getElementById('submitBtnText').style.display = 'inline';
+    document.getElementById('submitSpinner').style.display = 'none';
+}
+
+// Show success message for save
+function showSaveSuccessMessage() {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'alert-professional alert-success-professional';
+    messageDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; animation: slideIn 0.3s ease-out;';
+    messageDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="font-size: 1.5rem;">✅</span>
+            <div>
+                <h6 style="margin: 0; font-weight: 600;">Success</h6>
+                <p style="margin: 0; font-size: 0.9rem;">Product saved successfully!</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    setTimeout(() => {
+        messageDiv.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 5000);
+}
+
+// Show error message for save
+function showSaveErrorMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'alert-professional alert-danger-professional';
+    messageDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; animation: slideIn 0.3s ease-out;';
+    messageDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="font-size: 1.5rem;">❌</span>
+            <div>
+                <h6 style="margin: 0; font-weight: 600;">Error</h6>
+                <p style="margin: 0; font-size: 0.9rem;">${message}</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    setTimeout(() => {
+        messageDiv.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 5000);
+}
+
+console.log('✅ Form submission functionality initialized');
 
 // ============================================
 // DELETE PRODUCT FUNCTIONALITY
