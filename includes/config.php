@@ -2,24 +2,15 @@
 // includes/config.php
 // Database configuration for MySQL
 
-// Load environment variables from .env file
-$env_file = __DIR__ . '/../.env';
-if (file_exists($env_file)) {
-    $lines = file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
-            list($key, $value) = explode('=', $line, 2);
-            $_ENV[trim($key)] = trim($value);
-        }
-    }
-}
-
+// ============================================
 // MySQL Database Configuration
-$db_host = $_ENV['DB_HOST'] ?? 'localhost';
-$db_username = $_ENV['DB_USERNAME'] ?? 'root';
-$db_password = $_ENV['DB_PASSWORD'] ?? '';
-$db_name = $_ENV['DB_DATABASE'] ?? 'bookshelf_db';
-$db_port = $_ENV['DB_PORT'] ?? 3306;
+// ============================================
+// Edit these values with your actual database credentials
+$db_host = 'localhost';                    // Your MySQL server host
+$db_username = 'root';                     // Your MySQL username
+$db_password = '';                         // Your MySQL password
+$db_name = 'u618910819_bookshelf_db';      // Your database name
+$db_port = 3306;                           // MySQL port (default: 3306)
 
 // Create MySQL connection using MySQLi
 try {
