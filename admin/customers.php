@@ -1,373 +1,521 @@
 <?php
+/**
+ * Admin Customer Management
+ * View, search, and manage customer accounts
+ */
+
+session_start();
+if (!isset($_SESSION['admin_id'])) {
+    header('Location: login.php');
+    exit;
+}
+
 include '../includes/admin_header.php';
-include 'includes/professional-components.php';
+
+$message = '';
+$message_type = '';
 
 // Handle customer actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        $action = $_POST['action'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] === 'block_customer') {
         $customer_id = intval($_POST['customer_id']);
-        
-        switch ($action) {
-            case 'delete':
-                // Prevent deleting admin accounts
-                $check_stmt = $conn->prepare("SELECT role FROM users WHERE id = ?");
-                $check_stmt->bind_param("i", $customer_id);
-                $check_stmt->execute();
-                $user_role = $check_stmt->get_result()->fetch_assoc()['role'] ?? '';
-                
-                if ($user_role !== 'admin' && $customer_id != $_SESSION['admin_id']) {
-                    $stmt = $conn->prepare("DELETE FROM users WHERE id = ? AND role != 'admin'");
-                    $stmt->bind_param("i", $customer_id);
-                    if ($stmt->execute()) {
-                        $_SESSION['success_message'] = "Customer deleted successfully.";
-                    } else {
-                        $_SESSION['error_message'] = "Failed to delete customer.";
-                    }
-                    $stmt->close();
-                } else {
-                    $_SESSION['error_message'] = "Cannot delete admin accounts.";
-                }
-                break;
-                
-            case 'change_role':
-                $new_role = $_POST['role'];
-                $allowed_roles = ['customer', 'admin'];
-                
-                if (in_array($new_role, $allowed_roles) && $customer_id != $_SESSION['admin_id']) {
-                    $stmt = $conn->prepare("UPDATE users SET role = ? WHERE id = ?");
-                    $stmt->bind_param("si", $new_role, $customer_id);
-                    if ($stmt->execute()) {
-                        $_SESSION['success_message'] = "User role updated successfully.";
-                    } else {
-                        $_SESSION['error_message'] = "Failed to update user role.";
-                    }
-                    $stmt->close();
-                }
-                break;
-                
-            case 'add_customer':
-                $full_name = trim($_POST['full_name']);
-                $email = trim($_POST['email']);
-                $password = $_POST['password'];
-                $role = $_POST['role'] ?? 'customer';
-                
-                // Validate inputs
-                if (empty($full_name) || empty($email) || empty($password)) {
-                    $_SESSION['error_message'] = "All fields are required.";
-                } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $_SESSION['error_message'] = "Invalid email format.";
-                } else {
-                    // Check if email already exists
-                    $check_stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
-                    $check_stmt->bind_param("s", $email);
-                    $check_stmt->execute();
-                    
-                    if ($check_stmt->get_result()->num_rows > 0) {
-                        $_SESSION['error_message'] = "Email already exists.";
-                    } else {
-                        // Add new customer
-                        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                        $stmt = $conn->prepare("INSERT INTO users (full_name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())");
-                        $stmt->bind_param("ssss", $full_name, $email, $hashed_password, $role);
-                        
-                        if ($stmt->execute()) {
-                            $_SESSION['success_message'] = "Customer added successfully.";
-                        } else {
-                            $_SESSION['error_message'] = "Failed to add customer.";
-                        }
-                        $stmt->close();
-                    }
-                    $check_stmt->close();
-                }
-                break;
+        $update = $conn->prepare("UPDATE users SET status = 'blocked' WHERE id = ? AND role = 'customer'");
+        $update->bind_param('i', $customer_id);
+        if ($update->execute()) {
+            $message = 'Customer blocked successfully!';
+            $message_type = 'success';
         }
+        $update->close();
+    } elseif ($_POST['action'] === 'unblock_customer') {
+        $customer_id = intval($_POST['customer_id']);
+        $update = $conn->prepare("UPDATE users SET status = 'active' WHERE id = ? AND role = 'customer'");
+        $update->bind_param('i', $customer_id);
+        if ($update->execute()) {
+            $message = 'Customer unblocked successfully!';
+            $message_type = 'success';
+        }
+        $update->close();
     }
-    header("Location: customers.php");
-    exit();
 }
 
-// Pagination and search
-$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$limit = 20;
-$offset = ($page - 1) * $limit;
-$search = $_GET['search'] ?? '';
-$role_filter = $_GET['role'] ?? '';
+// Get search/filter parameters
+$search = trim($_GET['search'] ?? '');
+$sort = $_GET['sort'] ?? 'latest';
 
-// Build query
-$where_conditions = [];
+// Build customer query
+$query = "
+    SELECT 
+        u.id, u.name, u.email, u.phone, u.created_at, u.status,
+        COUNT(o.id) as total_orders,
+        SUM(o.total_amount) as total_spent,
+        MAX(o.created_at) as last_order_date
+    FROM users u
+    LEFT JOIN orders o ON u.id = o.user_id
+    WHERE u.role = 'customer'
+";
+
+$types = '';
 $params = [];
-$types = "";
 
 if (!empty($search)) {
-    $where_conditions[] = "(full_name LIKE ? OR email LIKE ?)";
-    $search_param = "%$search%";
-    $params = array_merge($params, [$search_param, $search_param]);
-    $types .= "ss";
+    $query .= " AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)";
+    $search_term = '%' . $search . '%';
+    $types = 'sss';
+    $params = [$search_term, $search_term, $search_term];
 }
 
-if (!empty($role_filter)) {
-    $where_conditions[] = "role = ?";
-    $params[] = $role_filter;
-    $types .= "s";
+$query .= " GROUP BY u.id";
+
+// Apply sorting
+switch ($sort) {
+    case 'newest':
+        $query .= " ORDER BY u.created_at DESC";
+        break;
+    case 'oldest':
+        $query .= " ORDER BY u.created_at ASC";
+        break;
+    case 'spending_high':
+        $query .= " ORDER BY total_spent DESC";
+        break;
+    case 'spending_low':
+        $query .= " ORDER BY total_spent ASC";
+        break;
+    default:
+        $query .= " ORDER BY u.created_at DESC";
 }
 
-$where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
+$query .= " LIMIT 100";
 
-// Get total count
-$count_sql = "SELECT COUNT(*) as total FROM users $where_clause";
+$stmt = $conn->prepare($query);
 if (!empty($params)) {
-    $count_stmt = $conn->prepare($count_sql);
-    $count_stmt->bind_param($types, ...$params);
-    $count_stmt->execute();
-    $total_customers = $count_stmt->get_result()->fetch_assoc()['total'];
-} else {
-    $total_customers = $conn->query($count_sql)->fetch_assoc()['total'];
+    $stmt->bind_param($types, ...$params);
 }
+$stmt->execute();
+$result = $stmt->get_result();
+$customers = $result->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
-$total_pages = ceil($total_customers / $limit);
-
-// Get customers
-$customers_sql = "SELECT id, full_name, email, role, created_at FROM users 
-                  $where_clause 
-                  ORDER BY created_at DESC 
-                  LIMIT ? OFFSET ?";
-
-$final_params = array_merge($params, [$limit, $offset]);
-$final_types = $types . "ii";
-
-$customers_stmt = $conn->prepare($customers_sql);
-$customers_stmt->bind_param($final_types, ...$final_params);
-$customers_stmt->execute();
-$customers_result = $customers_stmt->get_result();
-
-// Inject professional CSS
-injectProfessionalCSS();
-renderProfessionalJavaScript();
+// Get customer statistics
+$stats_query = "
+    SELECT 
+        COUNT(*) as total_customers,
+        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_customers,
+        COUNT(CASE WHEN status = 'blocked' THEN 1 END) as blocked_customers,
+        COUNT(CASE WHEN DATE(created_at) = CURDATE() THEN 1 END) as new_today
+    FROM users
+    WHERE role = 'customer'
+";
+$stats = $conn->prepare($stats_query);
+$stats->execute();
+$stats_data = $stats->get_result()->fetch_assoc();
+$stats->close();
 ?>
 
-<div class="admin-container">
-    <!-- Professional Page Header -->
-    <div class="page-header">
-        <div class="page-header-content">
-            <div>
-                <h1 class="page-title">👥 Customer Management</h1>
-                <p class="page-subtitle">Manage customer accounts and permissions</p>
-            </div>
-            <button class="btn-professional btn-primary-professional" onclick="openModal('addCustomerModal')">
-                <span>➕</span> Add Customer
-            </button>
+<style>
+    :root {
+        --primary: #1e40af;
+        --primary-dark: #1e3a8a;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --border-color: #e5e7eb;
+        --text-primary: #374151;
+        --text-secondary: #6b7280;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        color: white;
+        padding: 32px 0;
+        margin-bottom: 32px;
+    }
+
+    .page-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .page-header p {
+        margin: 8px 0 0 0;
+        opacity: 0.9;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid var(--primary);
+    }
+
+    .stat-card.success {
+        border-left-color: var(--success);
+    }
+
+    .stat-card.warning {
+        border-left-color: var(--warning);
+    }
+
+    .stat-card.danger {
+        border-left-color: var(--danger);
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 8px;
+    }
+
+    .stat-card.success .stat-value {
+        color: var(--success);
+    }
+
+    .stat-card.warning .stat-value {
+        color: var(--warning);
+    }
+
+    .stat-card.danger .stat-value {
+        color: var(--danger);
+    }
+
+    .card-section {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        margin-bottom: 32px;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0 0 20px 0;
+        color: var(--primary);
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .alert {
+        border: none;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 24px;
+    }
+
+    .alert-success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .alert-danger {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .filter-section {
+        background: #f9fafb;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .search-input {
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.95rem;
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .sort-select {
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: white;
+    }
+
+    .search-btn {
+        padding: 10px 20px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+    .search-btn:hover {
+        background: var(--primary-dark);
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th {
+        background: #f3f4f6;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        border-bottom: 2px solid var(--border-color);
+        font-size: 0.9rem;
+    }
+
+    .data-table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .data-table tr:hover {
+        background: #f9fafb;
+    }
+
+    .customer-name {
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    .customer-email {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+
+    .status-active {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-blocked {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.3s;
+        margin-right: 4px;
+    }
+
+    .action-btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .action-btn-primary:hover {
+        background: var(--primary-dark);
+    }
+
+    .action-btn-danger {
+        background: var(--danger);
+        color: white;
+    }
+
+    .action-btn-danger:hover {
+        background: #dc2626;
+    }
+
+    .modal-content {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+        color: white;
+        border: none;
+    }
+
+    @media (max-width: 768px) {
+        .filter-section {
+            flex-direction: column;
+        }
+
+        .search-input,
+        .sort-select {
+            width: 100%;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .data-table {
+            font-size: 0.85rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px;
+        }
+    }
+</style>
+
+<div class="page-header">
+    <div class="container">
+        <h1>👥 Customer Management</h1>
+        <p>View and manage all customer accounts</p>
+    </div>
+</div>
+
+<div class="container">
+    <?php if (!empty($message)): ?>
+        <div class="alert alert-<?php echo $message_type; ?>">
+            <?php echo htmlspecialchars($message); ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- Statistics -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Customers</div>
+            <div class="stat-value"><?php echo $stats_data['total_customers']; ?></div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-label">Active Customers</div>
+            <div class="stat-value"><?php echo $stats_data['active_customers']; ?></div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-label">Blocked Customers</div>
+            <div class="stat-value"><?php echo $stats_data['blocked_customers']; ?></div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-label">New Today</div>
+            <div class="stat-value"><?php echo $stats_data['new_today']; ?></div>
         </div>
     </div>
 
-    <!-- Success/Error Messages -->
-    <?php if (isset($_SESSION['success_message'])): ?>
-        <?php renderProfessionalAlert('success', $_SESSION['success_message']); unset($_SESSION['success_message']); ?>
-    <?php endif; ?>
+    <!-- Customers Table -->
+    <div class="card-section">
+        <h3 class="section-title">📊 All Customers</h3>
 
-    <?php if (isset($_SESSION['error_message'])): ?>
-        <?php renderProfessionalAlert('error', $_SESSION['error_message']); unset($_SESSION['error_message']); ?>
-    <?php endif; ?>
-
-    <!-- Professional Filters -->
-    <div class="filters-professional">
-        <form method="GET" class="filters-row">
-            <div class="form-group-professional">
-                <label class="form-label-professional">🔍 Search Customers</label>
-                <input type="text" class="form-control-professional" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Name or email...">
-            </div>
-            <div class="form-group-professional">
-                <label class="form-label-professional">📊 Role Filter</label>
-                <select name="role" class="form-control-professional form-select-professional">
-                    <option value="">All Roles</option>
-                    <option value="customer" <?php echo $role_filter === 'customer' ? 'selected' : ''; ?>>Customer</option>
-                    <option value="admin" <?php echo $role_filter === 'admin' ? 'selected' : ''; ?>>Admin</option>
+        <div class="filter-section">
+            <form method="GET" style="display: flex; gap: 12px; width: 100%; flex-wrap: wrap; align-items: center;">
+                <input type="text" name="search" class="search-input" placeholder="Search by name, email, or phone..." value="<?php echo htmlspecialchars($search); ?>">
+                
+                <select name="sort" class="sort-select">
+                    <option value="latest" <?php echo $sort === 'latest' ? 'selected' : ''; ?>>Latest Joined</option>
+                    <option value="newest" <?php echo $sort === 'newest' ? 'selected' : ''; ?>>Newest First</option>
+                    <option value="oldest" <?php echo $sort === 'oldest' ? 'selected' : ''; ?>>Oldest First</option>
+                    <option value="spending_high" <?php echo $sort === 'spending_high' ? 'selected' : ''; ?>>High Spenders</option>
+                    <option value="spending_low" <?php echo $sort === 'spending_low' ? 'selected' : ''; ?>>Low Spenders</option>
                 </select>
-            </div>
-            <div class="form-group-professional">
-                <label class="form-label-professional">&nbsp;</label>
-                <div style="display: flex; gap: var(--spacing-2);">
-                    <button type="submit" class="btn-professional btn-primary-professional">
-                        <span>🔍</span> Search
-                    </button>
-                    <a href="customers.php" class="btn-professional btn-outline-professional">
-                        <span>🔄</span> Clear
-                    </a>
-                </div>
-            </div>
-        </form>
-    </div>
 
-    <!-- Professional Customers Table -->
-    <div class="professional-card">
-        <div class="card-header-professional">
-            <h3 class="card-title">
-                <span>📋</span> Customers List
-                <span class="status-badge-professional status-active" style="margin-left: var(--spacing-2);">
-                    <?php echo number_format($total_customers); ?> total
-                </span>
-            </h3>
+                <button type="submit" class="search-btn">Search</button>
+            </form>
         </div>
-        <div class="card-body-professional" style="padding: 0;">
-            <div class="table-responsive">
-                <table class="table-professional">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Customer</th>
-                            <th>Role</th>
-                            <th>Registered</th>
-                            <th>Orders</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if ($customers_result && $customers_result->num_rows > 0): ?>
-                            <?php while ($customer = $customers_result->fetch_assoc()): ?>
-                                <?php
-                                // Get order count for this customer
-                                $order_count_stmt = $conn->prepare("SELECT COUNT(*) as count FROM orders WHERE customer_email = ?");
-                                $order_count_stmt->bind_param("s", $customer['email']);
-                                $order_count_stmt->execute();
-                                $order_count = $order_count_stmt->get_result()->fetch_assoc()['count'];
-                                ?>
-                                <tr class="fade-in">
-                                    <td><?php echo $customer['id']; ?></td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-3" style="width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px;">
-                                                <?php echo strtoupper(substr($customer['full_name'], 0, 1)); ?>
-                                            </div>
-                                            <div>
-                                                <strong><?php echo htmlspecialchars($customer['full_name']); ?></strong>
-                                                <br>
-                                                <small class="text-muted"><?php echo htmlspecialchars($customer['email']); ?></small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <form method="POST" class="d-inline">
-                                            <input type="hidden" name="action" value="change_role">
-                                            <input type="hidden" name="customer_id" value="<?php echo $customer['id']; ?>">
-                                            <select name="role" class="form-control-professional form-select-professional" 
-                                                    onchange="this.form.submit()" 
-                                                    style="min-width: 120px;"
-                                                    <?php echo $customer['id'] == $_SESSION['admin_id'] ? 'disabled' : ''; ?>>
-                                                <option value="customer" <?php echo $customer['role'] === 'customer' ? 'selected' : ''; ?>>Customer</option>
-                                                <option value="admin" <?php echo $customer['role'] === 'admin' ? 'selected' : ''; ?>>Admin</option>
-                                            </select>
-                                        </form>
-                                    </td>
-                                    <td><?php echo date('M j, Y', strtotime($customer['created_at'])); ?></td>
-                                    <td>
-                                        <span class="status-badge-professional status-info">
-                                            <?php echo $order_count; ?> orders
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group">
-                                            <a href="customer-details.php?id=<?php echo $customer['id']; ?>" class="btn-professional btn-info-professional" style="padding: var(--spacing-1) var(--spacing-2); font-size: var(--font-size-xs);">
-                                                <span>👁️</span> View
-                                            </a>
-                                            <?php if ($customer['id'] != $_SESSION['admin_id'] && $customer['role'] !== 'admin'): ?>
-                                                <form method="POST" class="d-inline">
-                                                    <input type="hidden" name="action" value="delete">
-                                                    <input type="hidden" name="customer_id" value="<?php echo $customer['id']; ?>">
-                                                    <button type="submit" class="btn-professional btn-danger-professional" style="padding: var(--spacing-1) var(--spacing-2); font-size: var(--font-size-xs);" 
-                                                            onclick="return confirm('Are you sure you want to delete this customer?')">
-                                                        <span>🗑️</span> Delete
-                                                    </button>
-                                                </form>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
-                        <?php else: ?>
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Contact</th>
+                        <th>Total Orders</th>
+                        <th>Total Spent</th>
+                        <th>Last Order</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!empty($customers)): ?>
+                        <?php foreach ($customers as $customer): ?>
                             <tr>
-                                <td colspan="6" class="text-center py-4">
-                                    <div class="text-muted">
-                                        <i class="bi bi-people fs-1 d-block mb-2"></i>
-                                        No customers found
-                                    </div>
+                                <td>
+                                    <div class="customer-name"><?php echo htmlspecialchars($customer['name']); ?></div>
+                                    <div class="customer-email">#<?php echo $customer['id']; ?></div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 0.9rem;"><?php echo htmlspecialchars($customer['email']); ?></div>
+                                    <div style="font-size: 0.85rem; color: var(--text-secondary);"><?php echo htmlspecialchars($customer['phone'] ?? 'N/A'); ?></div>
+                                </td>
+                                <td>
+                                    <strong><?php echo $customer['total_orders'] ?? 0; ?></strong>
+                                </td>
+                                <td>
+                                    <strong>₹<?php echo number_format($customer['total_spent'] ?? 0, 0); ?></strong>
+                                </td>
+                                <td>
+                                    <?php if ($customer['last_order_date']): ?>
+                                        <span style="font-size: 0.9rem;"><?php echo date('M j, Y', strtotime($customer['last_order_date'])); ?></span>
+                                    <?php else: ?>
+                                        <span style="color: var(--text-secondary);">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-<?php echo $customer['status']; ?>">
+                                        <?php echo $customer['status']; ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="customer_id" value="<?php echo $customer['id']; ?>">
+                                        <?php if ($customer['status'] === 'active'): ?>
+                                            <button type="submit" name="action" value="block_customer" class="action-btn action-btn-danger" onclick="return confirm('Block this customer?');">Block</button>
+                                        <?php else: ?>
+                                            <button type="submit" name="action" value="unblock_customer" class="action-btn action-btn-primary">Unblock</button>
+                                        <?php endif; ?>
+                                    </form>
                                 </td>
                             </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                No customers found
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
-
-    <!-- Professional Pagination -->
-    <?php if ($total_pages > 1): ?>
-        <div class="pagination-professional">
-            <?php if ($page > 1): ?>
-                <a class="pagination-btn" href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&role=<?php echo urlencode($role_filter); ?>">
-                    <span>←</span> Previous
-                </a>
-            <?php endif; ?>
-            
-            <?php
-            $start_page = max(1, $page - 2);
-            $end_page = min($total_pages, $page + 2);
-            
-            for ($i = $start_page; $i <= $end_page; $i++): ?>
-                <a class="pagination-btn <?php echo $i === $page ? 'active' : ''; ?>" href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&role=<?php echo urlencode($role_filter); ?>">
-                    <?php echo $i; ?>
-                </a>
-            <?php endfor; ?>
-            
-            <?php if ($page < $total_pages): ?>
-                <a class="pagination-btn" href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&role=<?php echo urlencode($role_filter); ?>">
-                    Next <span>→</span>
-                </a>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
 </div>
 
-<!-- Professional Add Customer Modal -->
-<div class="modal-professional" id="addCustomerModal">
-    <div class="modal-content-professional">
-        <div class="modal-header-professional">
-            <h5 class="modal-title">➕ Add New Customer</h5>
-            <button type="button" class="btn-professional" style="background: none; border: none; font-size: 1.5rem; padding: var(--spacing-1);" onclick="closeModal('addCustomerModal')">
-                <span>❌</span>
-            </button>
-        </div>
-        <form method="POST" class="form-professional">
-            <div class="modal-body-professional">
-                <input type="hidden" name="action" value="add_customer">
-                
-                <div class="form-group-professional">
-                    <label for="full_name" class="form-label-professional">👤 Full Name</label>
-                    <input type="text" class="form-control-professional" id="full_name" name="full_name" required>
-                </div>
-                
-                <div class="form-group-professional">
-                    <label for="email" class="form-label-professional">📧 Email</label>
-                    <input type="email" class="form-control-professional" id="email" name="email" required>
-                </div>
-                
-                <div class="form-group-professional">
-                    <label for="password" class="form-label-professional">🔒 Password</label>
-                    <input type="password" class="form-control-professional" id="password" name="password" required minlength="6">
-                    <small class="text-muted">Minimum 6 characters</small>
-                </div>
-                
-                <div class="form-group-professional">
-                    <label for="role" class="form-label-professional">📊 Role</label>
-                    <select class="form-control-professional form-select-professional" id="role" name="role">
-                        <option value="customer">Customer</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer-professional">
-                <button type="button" class="btn-professional btn-outline-professional" onclick="closeModal('addCustomerModal')">Cancel</button>
-                <button type="submit" class="btn-professional btn-primary-professional">Add Customer</button>
-            </div>
-        </form>
-    </div>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<?php include '../includes/admin_footer.php'; ?>
