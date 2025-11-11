@@ -5,11 +5,21 @@
 // ============================================
 // MySQL Database Configuration
 // ============================================
-// Edit these values with your actual database credentials
-$db_host = 'localhost';                    // Your MySQL server host
-$db_username = 'root';                     // Your MySQL username
-$db_password = '';                         // Your MySQL password
-$db_name = 'u618910819_bookshelf_db';      // Your database name
+// HOSTINGER SETUP INSTRUCTIONS:
+// 1. Log into hPanel → Hosting → MySQL Databases
+// 2. Find your database and click "Manage"
+// 3. Get the following values from there:
+//    - Database Name: u618910819_xxxx (already filled)
+//    - MySQL Username: u618910819_xxxx (update below)
+//    - MySQL Password: Your password (update below)
+//    - MySQL Host: Usually 'localhost' or an IP address (update below if different)
+// 4. Update the values below with your actual credentials
+// 5. Save and upload to your server
+
+$db_host = 'localhost';                    // Hostinger: Usually 'localhost' on shared hosting
+$db_username = 'u618910819_books';         // TODO: Replace with your MySQL username from hPanel
+$db_password = 'your_password_here';       // TODO: Replace with your MySQL password from hPanel
+$db_name = 'u618910819_bookshelf_db';      // Your Hostinger database name
 $db_port = 3306;                           // MySQL port (default: 3306)
 
 // Create MySQL connection using MySQLi
