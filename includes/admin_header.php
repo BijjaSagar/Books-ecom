@@ -45,30 +45,38 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
     
     <style>
         :root {
-            --admin-primary: #667eea;
-            --admin-secondary: #764ba2;
+            --admin-primary: #1e40af;
+            --admin-secondary: #1e3a8a;
+            --admin-accent: #3b82f6;
             --admin-success: #10b981;
             --admin-danger: #ef4444;
             --admin-warning: #f59e0b;
-            --admin-info: #3b82f6;
-            --admin-dark: #1f2937;
-            --admin-light: #f8fafc;
+            --admin-info: #06b6d4;
+            --admin-dark: #111827;
+            --admin-light: #f3f4f6;
+            --admin-border: #e5e7eb;
+        }
+
+        * {
+            transition: all 0.2s ease;
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--admin-light);
+            background: #ffffff;
+            color: var(--admin-dark);
         }
 
         .admin-sidebar {
-            background: linear-gradient(180deg, var(--admin-primary) 0%, var(--admin-secondary) 100%);
+            background: #ffffff;
+            border-right: 1px solid var(--admin-border);
             min-height: 100vh;
-            width: 280px;
+            width: 260px;
             position: fixed;
             top: 0;
             left: 0;
             z-index: 1000;
-            transition: all 0.3s ease;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.05);
         }
 
         .admin-sidebar.collapsed {
@@ -76,20 +84,24 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         }
 
         .sidebar-header {
-            padding: 2rem 1.5rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--admin-border);
             text-align: center;
         }
 
         .sidebar-header h4 {
-            color: white;
+            color: var(--admin-primary);
             margin: 0;
-            font-weight: 700;
-            font-size: 1.5rem;
+            font-weight: 800;
+            font-size: 1.4rem;
+            letter-spacing: -0.5px;
         }
 
         .sidebar-header small {
-            color: rgba(255,255,255,0.7);
+            color: #6b7280;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .sidebar-nav {
@@ -101,25 +113,26 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         }
 
         .nav-link {
-            color: rgba(255,255,255,0.8);
-            padding: 0.75rem 1.5rem;
+            color: #4b5563;
+            padding: 0.65rem 1.5rem;
             border-radius: 0;
-            transition: all 0.3s ease;
             border-left: 3px solid transparent;
             display: flex;
             align-items: center;
+            font-weight: 500;
+            font-size: 0.95rem;
         }
 
         .nav-link:hover {
-            color: white;
-            background: rgba(255,255,255,0.1);
-            border-left-color: white;
+            color: var(--admin-primary);
+            background: #f3f4f6;
+            border-left-color: var(--admin-accent);
         }
 
         .nav-link.active {
-            color: white;
-            background: rgba(255,255,255,0.15);
-            border-left-color: white;
+            color: var(--admin-primary);
+            background: #eff6ff;
+            border-left-color: var(--admin-primary);
             font-weight: 600;
         }
 
@@ -127,12 +140,15 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             width: 20px;
             margin-right: 0.75rem;
             font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .main-content {
-            margin-left: 280px;
-            transition: all 0.3s ease;
+            margin-left: 260px;
             min-height: 100vh;
+            background: #f9fafb;
         }
 
         .main-content.expanded {
@@ -140,13 +156,13 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         }
 
         .admin-navbar {
-            background: white;
-            border-bottom: 1px solid #e5e7eb;
+            background: #ffffff;
+            border-bottom: 1px solid var(--admin-border);
             padding: 1rem 2rem;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
         .page-header {
@@ -154,14 +170,21 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
             padding: 2rem;
             margin-bottom: 2rem;
             border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border-left: 4px solid var(--admin-primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--admin-primary);
         }
 
         .page-header h1 {
             color: var(--admin-dark);
             margin: 0;
-            font-weight: 700;
+            font-weight: 800;
+            font-size: 2rem;
+            letter-spacing: -0.5px;
+        }
+
+        .page-header p {
+            color: #6b7280;
+            margin: 0.5rem 0 0 0;
         }
 
         .page-content {
@@ -171,84 +194,196 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         .stat-card {
             background: white;
             border-radius: 12px;
-            padding: 2rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border-left: 4px solid var(--admin-primary);
-            transition: all 0.3s ease;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--admin-primary);
             height: 100%;
         }
 
         .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
         }
 
         .stat-card.bg-primary { border-left-color: var(--admin-primary); }
         .stat-card.bg-success { border-left-color: var(--admin-success); }
         .stat-card.bg-info { border-left-color: var(--admin-info); }
         .stat-card.bg-warning { border-left-color: var(--admin-warning); }
+        .stat-card.bg-danger { border-left-color: var(--admin-danger); }
 
         .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
             margin-bottom: 1rem;
+            color: white;
         }
 
-        .stat-icon.bg-primary { background: linear-gradient(135deg, var(--admin-primary), var(--admin-secondary)); }
-        .stat-icon.bg-success { background: linear-gradient(135deg, var(--admin-success), #34d399); }
-        .stat-icon.bg-info { background: linear-gradient(135deg, var(--admin-info), #60a5fa); }
-        .stat-icon.bg-warning { background: linear-gradient(135deg, var(--admin-warning), #fbbf24); }
+        .stat-icon.bg-primary { background: linear-gradient(135deg, var(--admin-primary), var(--admin-accent)); }
+        .stat-icon.bg-success { background: linear-gradient(135deg, var(--admin-success), #059669); }
+        .stat-icon.bg-info { background: linear-gradient(135deg, var(--admin-info), #0891b2); }
+        .stat-icon.bg-warning { background: linear-gradient(135deg, var(--admin-warning), #d97706); }
+        .stat-icon.bg-danger { background: linear-gradient(135deg, var(--admin-danger), #dc2626); }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--admin-dark);
+            margin: 0.5rem 0;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
 
         .card {
             border: none;
             border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            background: white;
         }
 
         .table {
             margin: 0;
+            background: white;
         }
 
         .table th {
             border-top: none;
+            border-bottom: 2px solid var(--admin-border);
             font-weight: 600;
             color: var(--admin-dark);
             background: var(--admin-light);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table td {
+            vertical-align: middle;
+            border-bottom: 1px solid var(--admin-border);
         }
 
         .btn {
             border-radius: 8px;
-            font-weight: 500;
-            padding: 0.5rem 1rem;
+            font-weight: 600;
+            padding: 0.55rem 1rem;
+            font-size: 0.875rem;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--admin-primary), var(--admin-secondary));
+            background: linear-gradient(135deg, var(--admin-primary), var(--admin-accent));
             border: none;
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #5a67d8, #6b46c1);
+            background: linear-gradient(135deg, var(--admin-secondary), var(--admin-primary));
             transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
         }
 
         .alert {
             border: none;
             border-radius: 8px;
-            border-left: 4px solid;
+            border-left: 5px solid;
         }
 
-        .alert-success { border-left-color: var(--admin-success); }
-        .alert-danger { border-left-color: var(--admin-danger); }
-        .alert-warning { border-left-color: var(--admin-warning); }
-        .alert-info { border-left-color: var(--admin-info); }
+        .alert-success {
+            border-left-color: var(--admin-success);
+            background: #f0fdf4;
+            color: #166534;
+        }
+        .alert-danger {
+            border-left-color: var(--admin-danger);
+            background: #fef2f2;
+            color: #991b1b;
+        }
+        .alert-warning {
+            border-left-color: var(--admin-warning);
+            background: #fffbeb;
+            color: #92400e;
+        }
+        .alert-info {
+            border-left-color: var(--admin-info);
+            background: #ecf9ff;
+            color: #164e63;
+        }
 
         .sidebar-toggle {
+            background: none;
+            border: none;
+            color: var(--admin-dark);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            font-size: 1.25rem;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--admin-light);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .admin-sidebar {
+                width: 250px;
+                margin-left: -250px;
+            }
+
+            .admin-sidebar.active {
+                margin-left: 0;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .main-content.expanded {
+                margin-left: 0;
+            }
+
+            .page-header {
+                padding: 1.5rem;
+            }
+
+            .page-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .page-content {
+                padding: 0 1rem 1rem;
+            }
+        }
+
+        /* Animations */
+        .nav-link {
+            position: relative;
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background: var(--admin-accent);
+            border-radius: 0 3px 3px 0;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .nav-link:hover::before {
+            opacity: 1;
+        }
+
+        .btn-sidebar-toggle {
             background: none;
             border: none;
             color: var(--admin-dark);
@@ -354,33 +489,8 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'amazon-seller-dashboard' ? 'active' : ''; ?>" href="/bookshelf/admin/amazon-seller-dashboard.php">
-                        <i class="bi bi-speedometer2"></i>
-                        <span>Seller Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'amazon-inventory-manager' ? 'active' : ''; ?>" href="/bookshelf/admin/amazon-inventory-manager.php">
-                        <i class="bi bi-box"></i>
-                        <span>Inventory Manager</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'amazon-order-manager' ? 'active' : ''; ?>" href="/bookshelf/admin/amazon-order-manager.php">
-                        <i class="bi bi-bag-check"></i>
-                        <span>Order Manager</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?php echo $current_page === 'amazon-performance-reports' ? 'active' : ''; ?>" href="/bookshelf/admin/amazon-performance-reports.php">
-                        <i class="bi bi-bar-chart"></i>
-                        <span>Performance Reports</span>
-                    </a>
-                </li>
-                 <li class="nav-item">
                     <a class="nav-link <?php echo $current_page === 'menu_manager' ? 'active' : ''; ?>" href="/bookshelf/admin/menu_manager.php">
-
-                        <i class="bi bi-gear"></i>
+                        <i class="bi bi-list-nested"></i>
                         <span>Menu</span>
                     </a>
                 </li>
