@@ -46,23 +46,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $status_filter = $_GET['status'] ?? 'all';
 $category_filter = $_GET['category'] ?? 'all';
 
-// Build query
-$query = "
-    SELECT * FROM support_tickets
-    WHERE 1=1
-";
+// Build parameterized query to prevent SQL injection
+$query = "SELECT * FROM support_tickets WHERE 1=1";
+$types = '';
+$params = [];
 
-if ($status_filter !== 'all') {
-    $query .= " AND status = '" . $conn->real_escape_string($status_filter) . "'";
+// Add status filter with proper parameterization
+if ($status_filter !== 'all' && !empty($status_filter)) {
+    // Whitelist allowed status values for extra security
+    $allowed_statuses = ['open', 'in_progress', 'resolved', 'closed'];
+    if (in_array($status_filter, $allowed_statuses)) {
+        $query .= " AND status = ?";
+        $types .= 's';
+        $params[] = $status_filter;
+    }
 }
 
-if ($category_filter !== 'all') {
-    $query .= " AND category = '" . $conn->real_escape_string($category_filter) . "'";
+// Add category filter with proper parameterization
+if ($category_filter !== 'all' && !empty($category_filter)) {
+    // Whitelist allowed categories for extra security
+    $allowed_categories = ['general', 'order', 'delivery', 'product', 'refund', 'feedback', 'other'];
+    if (in_array($category_filter, $allowed_categories)) {
+        $query .= " AND category = ?";
+        $types .= 's';
+        $params[] = $category_filter;
+    }
 }
 
 $query .= " ORDER BY created_at DESC LIMIT 100";
 
+// Execute parameterized query
 $tickets_result = $conn->prepare($query);
+if ($tickets_result && !empty($types)) {
+    $tickets_result->bind_param($types, ...$params);
+}
 $tickets_result->execute();
 $tickets = $tickets_result->get_result()->fetch_all(MYSQLI_ASSOC);
 $tickets_result->close();

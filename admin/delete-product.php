@@ -84,10 +84,27 @@ try {
         ];
 
         foreach ($tables_to_clean as $table) {
-            // Check if table exists first
-            $check_table = $conn->query("SHOW TABLES LIKE '$table'");
-            if ($check_table->num_rows > 0) {
-                $delete_stmt = $conn->prepare("DELETE FROM $table WHERE product_id = ?");
+            // Whitelist table names for security (prevent table name injection)
+            $allowed_tables = ['order_items', 'cart_items', 'product_reviews', 'product_images', 'product_inventory', 'product_analytics'];
+
+            if (!in_array($table, $allowed_tables)) {
+                continue; // Skip unauthorized table names
+            }
+
+            // Check if table exists using information_schema (parameterized query)
+            $check_table_stmt = $conn->prepare("
+                SELECT TABLE_NAME FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+            ");
+            $check_table_stmt->bind_param('s', $table);
+            $check_table_stmt->execute();
+            $check_result = $check_table_stmt->get_result();
+            $check_table_stmt->close();
+
+            if ($check_result->num_rows > 0) {
+                // Use backtick escaping for table name in prepared statement
+                // Since table names cannot be parameterized, we use backticks and whitelist validation
+                $delete_stmt = $conn->prepare("DELETE FROM `" . $conn->real_escape_string($table) . "` WHERE product_id = ?");
                 if ($delete_stmt) {
                     $delete_stmt->bind_param('i', $product_id);
                     $delete_stmt->execute();
@@ -110,9 +127,13 @@ try {
         }
 
         // 3. Delete additional product images
-        $images_result = $conn->query("
-            SELECT file_path FROM product_images WHERE product_id = $product_id
+        // Use prepared statement to prevent SQL injection
+        $images_stmt = $conn->prepare("
+            SELECT file_path FROM product_images WHERE product_id = ?
         ");
+        $images_stmt->bind_param('i', $product_id);
+        $images_stmt->execute();
+        $images_result = $images_stmt->get_result();
 
         if ($images_result && $images_result->num_rows > 0) {
             while ($image = $images_result->fetch_assoc()) {
@@ -122,6 +143,7 @@ try {
                 }
             }
         }
+        $images_stmt->close();
 
         // 4. Delete the product itself
         $delete_product_stmt = $conn->prepare("
