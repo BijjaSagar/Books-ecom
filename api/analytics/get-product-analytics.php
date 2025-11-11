@@ -6,6 +6,7 @@
  * Returns detailed product performance analytics
  */
 
+session_start();
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
@@ -38,7 +39,11 @@ try {
     $products = $analytics->getProductAnalytics($product_id, $days);
 
     if ($product_id) {
-        $product_info = $conn->query("SELECT id, title FROM products WHERE id = $product_id")->fetch_assoc();
+        $product_stmt = $conn->prepare("SELECT id, title FROM products WHERE id = ?");
+        $product_stmt->bind_param('i', $product_id);
+        $product_stmt->execute();
+        $product_info = $product_stmt->get_result()->fetch_assoc();
+        $product_stmt->close();
         $response = [
             'success' => true,
             'product' => [
