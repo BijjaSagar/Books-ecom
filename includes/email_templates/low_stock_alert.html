@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Low Stock Alert</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #f59e0b, #f97316);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 20px;
+        }
+        .alert-banner {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            border-left: 4px solid #ef4444;
+            padding: 16px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+        .alert-banner p {
+            color: #991b1b;
+            margin: 0;
+        }
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            background: #f9fafb;
+        }
+        .products-table th {
+            background-color: #f59e0b;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #f97316;
+            font-size: 13px;
+        }
+        .products-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #374151;
+            font-size: 13px;
+        }
+        .products-table tr:hover {
+            background-color: #f3f4f6;
+        }
+        .stock-critical {
+            color: #991b1b;
+            font-weight: 600;
+        }
+        .stock-low {
+            color: #92400e;
+            font-weight: 600;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #f59e0b;
+            color: white;
+            padding: 12px 32px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        .action-button:hover {
+            background-color: #f97316;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .stat-box {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 6px;
+            text-align: center;
+            border-left: 4px solid #f59e0b;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #f59e0b;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 8px;
+        }
+        .recommendation {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), rgba(249, 115, 22, 0.05));
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 24px 0;
+        }
+        .recommendation h3 {
+            color: #f59e0b;
+            margin-bottom: 12px;
+        }
+        .recommendation ul {
+            margin-left: 20px;
+            color: #6b7280;
+            line-height: 1.8;
+            font-size: 13px;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 24px 20px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer p {
+            font-size: 12px;
+            color: #6b7280;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>⚠️ Low Stock Alert</h1>
+            <p>Action Required</p>
+        </div>
+
+        <div class="content">
+            <p style="margin-bottom: 16px;">Hello {{admin_name}},</p>
+
+            <div class="alert-banner">
+                <p><strong>⚠️ {{critical_count}} products are critically low on stock</strong> and need immediate attention!</p>
+            </div>
+
+            <p style="margin-bottom: 16px;">
+                We've detected that several products have low inventory levels. Please review the list below and consider 
+                restocking these items to prevent lost sales opportunities.
+            </p>
+
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-number">{{critical_count}}</div>
+                    <div class="stat-label">Critical Stock</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">{{low_count}}</div>
+                    <div class="stat-label">Low Stock</div>
+                </div>
+            </div>
+
+            <h3 style="color: #f59e0b; margin: 24px 0 16px 0;">Products Requiring Attention</h3>
+            
+            <div style="overflow-x: auto;">
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Current Stock</th>
+                            <th>Threshold</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{product_rows}}
+                    </tbody>
+                </table>
+            </div>
+
+            <center>
+                <a href="{{inventory_url}}" class="action-button">Go to Inventory</a>
+            </center>
+
+            <div class="recommendation">
+                <h3>Recommended Actions:</h3>
+                <ul>
+                    <li>Review current stock levels in the inventory management system</li>
+                    <li>Contact suppliers to place urgent restock orders for critical items</li>
+                    <li>Consider temporarily reducing discounts on low-stock items to manage demand</li>
+                    <li>Monitor sales velocity to anticipate future stock needs</li>
+                    <li>Update product availability status if items are out of stock</li>
+                </ul>
+            </div>
+
+            <p style="color: #6b7280; font-size: 13px; margin-top: 20px;">
+                <strong>Note:</strong> This is an automated alert. You can adjust stock alert thresholds in your inventory settings.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p><strong>Need Help?</strong> Contact your team administrator</p>
+            <p style="margin-top: 16px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                © 2024 Books Bookstore. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
