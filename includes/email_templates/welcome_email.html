@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Books Bookstore</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 20px;
+        }
+        .greeting {
+            margin-bottom: 24px;
+        }
+        .greeting h2 {
+            color: #1e40af;
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 32px 0;
+        }
+        .feature-card {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+        .feature-title {
+            color: #1e40af;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .feature-description {
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+        .highlight-section {
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.05), rgba(30, 64, 175, 0.05));
+            border-left: 4px solid #1e40af;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 24px 0;
+        }
+        .highlight-section h3 {
+            color: #1e40af;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        .highlight-section p {
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .highlight-section p:last-child {
+            margin-bottom: 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #1e40af;
+            color: white;
+            padding: 14px 36px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 24px 0;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        .cta-button:hover {
+            background-color: #1e3a8a;
+        }
+        .secondary-links {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .secondary-link {
+            background-color: #f3f4f6;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .secondary-link a {
+            color: #1e40af;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .secondary-link a:hover {
+            text-decoration: underline;
+        }
+        .promo-section {
+            background: linear-gradient(135deg, #1e3a8a, #1e40af);
+            color: white;
+            padding: 24px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 24px 0;
+        }
+        .promo-section h3 {
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+        .promo-code {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 1px;
+            margin: 16px 0;
+        }
+        .divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin: 24px 0;
+        }
+        .faq-section {
+            margin: 24px 0;
+        }
+        .faq-section h3 {
+            color: #1e40af;
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+        .faq-item {
+            margin-bottom: 12px;
+        }
+        .faq-question {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        .faq-answer {
+            font-size: 13px;
+            color: #6b7280;
+            padding-left: 16px;
+            border-left: 2px solid #e5e7eb;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 24px 20px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer p {
+            font-size: 12px;
+            color: #6b7280;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>📚 Welcome to Books Bookstore!</h1>
+            <p>Your Ultimate Literary Destination</p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                <h2>Hello {{customer_name}}! 👋</h2>
+                <p>
+                    We're thrilled to have you join our community of book lovers! Your account has been successfully created, 
+                    and you're now ready to explore our vast collection of books.
+                </p>
+            </div>
+
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <div class="feature-title">Personalized Recommendations</div>
+                    <div class="feature-description">Discover books tailored to your preferences</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-title">Fast Shipping</div>
+                    <div class="feature-description">Get your books in 3-5 business days</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⭐</div>
+                    <div class="feature-title">Community Reviews</div>
+                    <div class="feature-description">Read reviews from fellow readers</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💝</div>
+                    <div class="feature-title">Exclusive Offers</div>
+                    <div class="feature-description">Access member-only discounts</div>
+                </div>
+            </div>
+
+            <div class="promo-section">
+                <h3>Welcome Offer!</h3>
+                <p style="margin-bottom: 16px;">Get <strong>15% OFF</strong> your first order</p>
+                <div class="promo-code">WELCOME15</div>
+                <p style="font-size: 13px; margin-top: 12px; opacity: 0.9;">Valid for 30 days on orders over ₹500</p>
+            </div>
+
+            <div class="highlight-section">
+                <h3>Getting Started</h3>
+                <p>Here are a few things you can do right now:</p>
+                <p>✓ Complete your profile for personalized recommendations</p>
+                <p>✓ Browse our featured collections by genre</p>
+                <p>✓ Add books to your wishlist for future purchases</p>
+                <p>✓ Check out bestsellers and new arrivals</p>
+            </div>
+
+            <center>
+                <a href="{{browse_books_url}}" class="cta-button">Start Shopping Now</a>
+            </center>
+
+            <div class="secondary-links">
+                <div class="secondary-link">
+                    <a href="{{my_account_url}}">My Account</a>
+                </div>
+                <div class="secondary-link">
+                    <a href="{{bestsellers_url}}">Bestsellers</a>
+                </div>
+                <div class="secondary-link">
+                    <a href="{{new_arrivals_url}}">New Arrivals</a>
+                </div>
+                <div class="secondary-link">
+                    <a href="{{categories_url}}">Categories</a>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="faq-section">
+                <h3>Quick Questions?</h3>
+                <div class="faq-item">
+                    <div class="faq-question">Q: Can I track my order?</div>
+                    <div class="faq-answer">Yes! You'll receive a tracking number via email once your order ships. Track it in real-time from your account dashboard.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">Q: What's your return policy?</div>
+                    <div class="faq-answer">We offer hassle-free returns within 30 days of purchase. Items must be in original condition.</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-question">Q: How can I get help?</div>
+                    <div class="faq-answer">Contact our support team 24/7 at support@bookstore.com or call {{support_phone}}.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>Have questions?</strong> We're here to help!</p>
+            <p>Email: support@bookstore.com | Phone: {{support_phone}}</p>
+            <p style="margin-top: 16px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                © 2024 Books Bookstore. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

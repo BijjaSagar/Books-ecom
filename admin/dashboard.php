@@ -1,13 +1,45 @@
-<?php 
+<?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-include '../includes/admin_header.php'; 
+include '../includes/admin_header.php';
+
+// Get date range filter from request
+$date_range = $_GET['date_range'] ?? '7_days';
+$custom_date_from = $_GET['date_from'] ?? '';
+$custom_date_to = $_GET['date_to'] ?? '';
+
+// Calculate date range
+switch ($date_range) {
+    case 'today':
+        $start_date = date('Y-m-d');
+        $end_date = date('Y-m-d');
+        break;
+    case '7_days':
+        $start_date = date('Y-m-d', strtotime('-7 days'));
+        $end_date = date('Y-m-d');
+        break;
+    case '30_days':
+        $start_date = date('Y-m-d', strtotime('-30 days'));
+        $end_date = date('Y-m-d');
+        break;
+    case '90_days':
+        $start_date = date('Y-m-d', strtotime('-90 days'));
+        $end_date = date('Y-m-d');
+        break;
+    case 'custom':
+        $start_date = $custom_date_from ?: date('Y-m-d', strtotime('-7 days'));
+        $end_date = $custom_date_to ?: date('Y-m-d');
+        break;
+    default:
+        $start_date = date('Y-m-d', strtotime('-7 days'));
+        $end_date = date('Y-m-d');
+}
 
 // Enhanced data collection for professional dashboard
-function getAdvancedStats($conn) {
+function getAdvancedStats($conn, $start_date, $end_date) {
     $stats = [];
-    
-    // Revenue Analytics
+
+    // Revenue Analytics with date range
     $monthly_revenue = $conn->query("SELECT MONTH(created_at) as month, SUM(total_amount) as revenue FROM orders WHERE YEAR(created_at) = YEAR(CURDATE()) AND order_status IN ('completed', 'delivered') GROUP BY MONTH(created_at) ORDER BY month");
     $stats['monthly_revenue'] = [];
     if ($monthly_revenue) {
@@ -15,53 +47,68 @@ function getAdvancedStats($conn) {
             $stats['monthly_revenue'][$row['month']] = $row['revenue'];
         }
     }
-    
+
+    // Daily sales within date range
+    $daily_sales = $conn->prepare("SELECT DATE(created_at) as sale_date, SUM(total_amount) as daily_total, COUNT(*) as daily_orders FROM orders WHERE DATE(created_at) BETWEEN ? AND ? AND order_status IN ('completed', 'delivered') GROUP BY DATE(created_at) ORDER BY sale_date");
+    $daily_sales->bind_param("ss", $start_date, $end_date);
+    $daily_sales->execute();
+    $daily_sales_result = $daily_sales->get_result();
+    $stats['daily_sales'] = [];
+    while ($row = $daily_sales_result->fetch_assoc()) {
+        $stats['daily_sales'][] = $row;
+    }
+    $daily_sales->close();
+
     // Weekly sales comparison
     $this_week = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE WEEK(created_at) = WEEK(CURDATE()) AND order_status IN ('completed', 'delivered')");
     $last_week = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE WEEK(created_at) = WEEK(CURDATE()) - 1 AND order_status IN ('completed', 'delivered')");
     $stats['this_week'] = $this_week ? ($this_week->fetch_assoc()['total'] ?? 0) : 0;
     $stats['last_week'] = $last_week ? ($last_week->fetch_assoc()['total'] ?? 0) : 0;
-    
-    // Top selling products
-    $top_products = $conn->query("SELECT p.title, SUM(oi.quantity) as sold FROM order_items oi JOIN products p ON oi.product_id = p.id GROUP BY oi.product_id ORDER BY sold DESC LIMIT 5");
+
+    // Top selling products in date range
+    $top_products = $conn->prepare("SELECT p.id, p.title, SUM(oi.quantity) as sold, SUM(oi.total) as revenue FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE DATE(o.created_at) BETWEEN ? AND ? GROUP BY oi.product_id ORDER BY sold DESC LIMIT 10");
+    $top_products->bind_param("ss", $start_date, $end_date);
+    $top_products->execute();
+    $top_products_result = $top_products->get_result();
     $stats['top_products'] = [];
-    if ($top_products) {
-        while ($row = $top_products->fetch_assoc()) {
-            $stats['top_products'][] = $row;
-        }
+    while ($row = $top_products_result->fetch_assoc()) {
+        $stats['top_products'][] = $row;
     }
-    
-    // Category performance
-    $category_sales = $conn->query("SELECT c.name, COUNT(oi.id) as orders FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN categories c ON p.category_id = c.id GROUP BY c.id ORDER BY orders DESC LIMIT 5");
+    $top_products->close();
+
+    // Category performance in date range
+    $category_sales = $conn->prepare("SELECT c.name, COUNT(oi.id) as orders, SUM(oi.total) as revenue FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN categories c ON p.category_id = c.id JOIN orders o ON oi.order_id = o.id WHERE DATE(o.created_at) BETWEEN ? AND ? GROUP BY c.id ORDER BY orders DESC LIMIT 5");
+    $category_sales->bind_param("ss", $start_date, $end_date);
+    $category_sales->execute();
+    $category_sales_result = $category_sales->get_result();
     $stats['category_sales'] = [];
-    if ($category_sales) {
-        while ($row = $category_sales->fetch_assoc()) {
-            $stats['category_sales'][] = $row;
-        }
+    while ($row = $category_sales_result->fetch_assoc()) {
+        $stats['category_sales'][] = $row;
     }
-    
+    $category_sales->close();
+
     // Customer insights
     $new_customers = $conn->query("SELECT COUNT(*) as total FROM users WHERE role = 'customer' AND DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
     $stats['new_customers'] = $new_customers ? ($new_customers->fetch_assoc()['total'] ?? 0) : 0;
-    
+
     return $stats;
 }
 
-$advanced_stats = getAdvancedStats($conn);
+$advanced_stats = getAdvancedStats($conn, $start_date, $end_date);
 ?>
 
 <!-- Professional E-commerce Dashboard CSS -->
 <style>
     :root {
-        --primary: #667eea;
-        --primary-dark: #5a6fd8;
-        --secondary: #764ba2;
-        --success: #28a745;
-        --warning: #ffc107;
-        --danger: #dc3545;
-        --info: #17a2b8;
-        --light: #f8f9fa;
-        --dark: #343a40;
+        --primary: #1e40af;
+        --primary-dark: #1e3a8a;
+        --secondary: #3b82f6;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --info: #06b6d4;
+        --light: #f3f4f6;
+        --dark: #111827;
         --border-radius: 12px;
         --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -94,7 +141,7 @@ $advanced_stats = getAdvancedStats($conn);
         padding: 32px;
         box-shadow: var(--box-shadow);
         margin-bottom: 32px;
-        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
         color: white;
         position: relative;
         overflow: hidden;
@@ -221,22 +268,22 @@ $advanced_stats = getAdvancedStats($conn);
     
     .metric-card.revenue {
         border-left-color: var(--primary);
-        background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
+        background: linear-gradient(135deg, #1e40af10 0%, #3b82f610 100%);
     }
-    
+
     .metric-card.orders {
         border-left-color: var(--success);
-        background: linear-gradient(135deg, #28a74510 0%, #20c99710 100%);
+        background: linear-gradient(135deg, #10b98110 0%, #059669 10%);
     }
-    
+
     .metric-card.products {
         border-left-color: var(--info);
-        background: linear-gradient(135deg, #17a2b810 0%, #138a9b10 100%);
+        background: linear-gradient(135deg, #06b6d410 0%, #0891b210 100%);
     }
-    
+
     .metric-card.customers {
         border-left-color: var(--warning);
-        background: linear-gradient(135deg, #ffc10710 0%, #e0a80010 100%);
+        background: linear-gradient(135deg, #f59e0b10 0%, #f9731610 100%);
     }
     
     .metric-icon {
@@ -608,6 +655,67 @@ if ($status_data) {
         </div>
     </div>
 
+    <!-- Date Range Filter -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <a href="?date_range=today" class="date-btn <?php echo $date_range === 'today' ? 'active' : ''; ?>">Today</a>
+                <a href="?date_range=7_days" class="date-btn <?php echo $date_range === '7_days' ? 'active' : ''; ?>">7 Days</a>
+                <a href="?date_range=30_days" class="date-btn <?php echo $date_range === '30_days' ? 'active' : ''; ?>">30 Days</a>
+                <a href="?date_range=90_days" class="date-btn <?php echo $date_range === '90_days' ? 'active' : ''; ?>">90 Days</a>
+                <button onclick="toggleCustomDate()" class="date-btn <?php echo $date_range === 'custom' ? 'active' : ''; ?>">Custom Range</button>
+            </div>
+            <div id="customDateRange" style="display: <?php echo $date_range === 'custom' ? 'flex' : 'none'; ?>; gap: 12px; align-items: center;">
+                <input type="date" id="dateFrom" name="date_from" value="<?php echo htmlspecialchars($custom_date_from ?: $start_date); ?>" style="padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.9rem;">
+                <span style="color: #6b7280;">to</span>
+                <input type="date" id="dateTo" name="date_to" value="<?php echo htmlspecialchars($custom_date_to ?: $end_date); ?>" style="padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.9rem;">
+                <button onclick="applyCustomDate()" style="background: var(--primary); color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Apply</button>
+            </div>
+        </div>
+        <div style="margin-top: 12px; font-size: 0.9rem; color: #6b7280;">
+            📅 Showing data from <strong><?php echo date('M j, Y', strtotime($start_date)); ?></strong> to <strong><?php echo date('M j, Y', strtotime($end_date)); ?></strong>
+        </div>
+    </div>
+
+    <style>
+        .date-btn {
+            background: white;
+            border: 1px solid #e5e7eb;
+            color: #374151;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .date-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .date-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+    </style>
+
+    <script>
+        function toggleCustomDate() {
+            const customRange = document.getElementById('customDateRange');
+            customRange.style.display = customRange.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function applyCustomDate() {
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            window.location.href = `?date_range=custom&date_from=${dateFrom}&date_to=${dateTo}`;
+        }
+    </script>
+
     <!-- Alert Notifications -->
     <?php if ($pending_orders > 0 || $low_stock > 0): ?>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 32px;">
@@ -704,33 +812,67 @@ if ($status_data) {
 
     <!-- Analytics Section -->
     <div class="analytics-grid">
-        <!-- Sales Chart -->
+        <!-- Sales Trend Chart -->
         <div class="chart-card">
             <div class="card-header">
-                <h3>📈 Revenue Analytics</h3>
+                <h3>📈 Sales Trend Analysis</h3>
             </div>
             <div class="card-body">
-                <div class="chart-placeholder">
-                    <div style="text-align: center;">
-                        <div style="font-size: 3rem; margin-bottom: 16px;">📉</div>
-                        <h4 style="margin: 0 0 8px 0; color: #374151;">Monthly Revenue Trends</h4>
-                        <p style="margin: 0; font-size: 0.9rem;">Chart visualization coming soon</p>
-                        <div style="margin-top: 16px; padding: 16px; background: white; border-radius: 8px; text-align: left;">
-                            <strong style="color: var(--primary);">Monthly Revenue:</strong>
-                            <div style="margin-top: 8px; font-size: 0.9rem;">
-                                <?php 
-                                $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                foreach ($advanced_stats['monthly_revenue'] as $month => $revenue): 
+                <?php if (!empty($advanced_stats['daily_sales'])): ?>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">Date</th>
+                                    <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">Orders</th>
+                                    <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">Daily Revenue</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">Trend</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $prev_revenue = 0;
+                                foreach (array_reverse($advanced_stats['daily_sales']) as $day_data):
+                                    $trend = $day_data['daily_total'] >= $prev_revenue ? '📈' : '📉';
+                                    $prev_revenue = $day_data['daily_total'];
                                 ?>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                    <span><?php echo $months[$month-1]; ?>:</span>
-                                    <span style="font-weight: 600;"><?php echo $settings['currency_symbol'] ?? '₹'; ?><?php echo number_format($revenue, 0); ?></span>
-                                </div>
+                                <tr style="border-bottom: 1px solid #f3f4f6;">
+                                    <td style="padding: 12px; color: #374151; font-weight: 500;"><?php echo date('M j, Y', strtotime($day_data['sale_date'])); ?></td>
+                                    <td style="padding: 12px; text-align: right; color: #6b7280;"><?php echo number_format($day_data['daily_orders']); ?></td>
+                                    <td style="padding: 12px; text-align: right; font-weight: 600; color: var(--primary);"><?php echo $settings['currency_symbol'] ?? '₹'; ?><?php echo number_format($day_data['daily_total'], 0); ?></td>
+                                    <td style="padding: 12px; color: #6b7280;"><?php echo $trend; ?></td>
+                                </tr>
                                 <?php endforeach; ?>
-                            </div>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                        <?php
+                        $total_period_sales = array_sum(array_column($advanced_stats['daily_sales'], 'daily_total'));
+                        $total_period_orders = array_sum(array_column($advanced_stats['daily_sales'], 'daily_orders'));
+                        $avg_daily_sales = count($advanced_stats['daily_sales']) > 0 ? $total_period_sales / count($advanced_stats['daily_sales']) : 0;
+                        $avg_order_value = $total_period_orders > 0 ? $total_period_sales / $total_period_orders : 0;
+                        ?>
+                        <div>
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 4px;">Period Total</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);"><?php echo $settings['currency_symbol'] ?? '₹'; ?><?php echo number_format($total_period_sales, 0); ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 4px;">Average Daily</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);"><?php echo $settings['currency_symbol'] ?? '₹'; ?><?php echo number_format($avg_daily_sales, 0); ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: #6b7280; margin-bottom: 4px;">Avg Order Value</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--info);"><?php echo $settings['currency_symbol'] ?? '₹'; ?><?php echo number_format($avg_order_value, 2); ?></div>
                         </div>
                     </div>
-                </div>
+                <?php else: ?>
+                    <div style="text-align: center; padding: 3rem 2rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">📉</div>
+                        <h4 style="margin: 0 0 8px 0; color: #374151;">No Sales Data</h4>
+                        <p style="color: #6b7280; margin: 0;">No completed orders in the selected date range</p>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -744,10 +886,12 @@ if ($status_data) {
                 <div class="insight-card">
                     <h4 class="insight-title">🏅 Top Selling Products</h4>
                     <?php if (!empty($advanced_stats['top_products'])): ?>
-                        <?php foreach (array_slice($advanced_stats['top_products'], 0, 3) as $product): ?>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 8px; background: #f8fafc; border-radius: 6px;">
-                                <span style="font-size: 0.9rem;"><?php echo htmlspecialchars($product['title']); ?></span>
-                                <span style="background: var(--primary); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"><?php echo $product['sold']; ?> sold</span>
+                        <?php foreach (array_slice($advanced_stats['top_products'], 0, 5) as $index => $product): ?>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 12px; background: #f8fafc; border-radius: 6px; border-left: 3px solid var(--primary);">
+                                <div style="flex: 1;">
+                                    <div style="font-size: 0.9rem; font-weight: 500; color: #374151; margin-bottom: 4px;"><?php echo ($index + 1) . '. ' . htmlspecialchars(substr($product['title'], 0, 30)); ?></div>
+                                    <div style="font-size: 0.8rem; color: #6b7280;"><?php echo number_format($product['sold']); ?> units • <?php echo $settings['currency_symbol'] ?? '₹'; ?><?php echo number_format($product['revenue'], 0); ?></div>
+                                </div>
                             </div>
                         <?php endforeach; ?>
                     <?php else: ?>
@@ -759,10 +903,12 @@ if ($status_data) {
                 <div class="insight-card" style="border-left-color: var(--success);">
                     <h4 class="insight-title">📋 Category Performance</h4>
                     <?php if (!empty($advanced_stats['category_sales'])): ?>
-                        <?php foreach (array_slice($advanced_stats['category_sales'], 0, 3) as $category): ?>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 8px; background: #f0fdf4; border-radius: 6px;">
-                                <span style="font-size: 0.9rem;"><?php echo htmlspecialchars($category['name']); ?></span>
-                                <span style="background: var(--success); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"><?php echo $category['orders']; ?> orders</span>
+                        <?php foreach (array_slice($advanced_stats['category_sales'], 0, 5) as $index => $category): ?>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 12px; background: #f0fdf4; border-radius: 6px; border-left: 3px solid var(--success);">
+                                <div style="flex: 1;">
+                                    <div style="font-size: 0.9rem; font-weight: 500; color: #374151; margin-bottom: 4px;"><?php echo ($index + 1) . '. ' . htmlspecialchars($category['name']); ?></div>
+                                    <div style="font-size: 0.8rem; color: #6b7280;"><?php echo number_format($category['orders']); ?> orders • <?php echo $settings['currency_symbol'] ?? '₹'; ?><?php echo number_format($category['revenue'], 0); ?></div>
+                                </div>
                             </div>
                         <?php endforeach; ?>
                     <?php else: ?>

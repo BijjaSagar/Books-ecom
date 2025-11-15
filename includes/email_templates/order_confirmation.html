@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 20px;
+        }
+        .greeting {
+            margin-bottom: 24px;
+        }
+        .greeting h2 {
+            color: #1e40af;
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+        .order-summary {
+            background-color: #f9fafb;
+            border-left: 4px solid #1e40af;
+            padding: 16px;
+            margin: 24px 0;
+            border-radius: 4px;
+        }
+        .order-summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .order-summary-row:last-child {
+            border-bottom: none;
+        }
+        .order-summary-label {
+            font-weight: 600;
+            color: #6b7280;
+        }
+        .order-summary-value {
+            color: #374151;
+            font-weight: 500;
+        }
+        .order-items {
+            margin: 24px 0;
+        }
+        .order-items h3 {
+            color: #1e40af;
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+        .item-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+        .item-table th {
+            background-color: #f3f4f6;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+            font-size: 14px;
+        }
+        .item-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #374151;
+        }
+        .item-table tr:hover {
+            background-color: #f9fafb;
+        }
+        .total-row {
+            background-color: #1e40af;
+            color: white;
+            padding: 12px;
+            text-align: right;
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #1e40af;
+            color: white;
+            padding: 12px 32px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 24px 0;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        .action-button:hover {
+            background-color: #1e3a8a;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 24px 20px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer p {
+            font-size: 12px;
+            color: #6b7280;
+            margin: 8px 0;
+        }
+        .divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin: 20px 0;
+        }
+        .delivery-info {
+            background-color: #f3f4f6;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .delivery-info h4 {
+            color: #1e40af;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .delivery-info p {
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>✅ Order Confirmed!</h1>
+            <p>Thank you for your order</p>
+        </div>
+
+        <div class="content">
+            <div class="greeting">
+                <h2>Hi {{customer_name}},</h2>
+                <p>Your order has been successfully placed! We're excited to prepare your books for shipment.</p>
+            </div>
+
+            <div class="order-summary">
+                <div class="order-summary-row">
+                    <span class="order-summary-label">Order Number</span>
+                    <span class="order-summary-value">#{{order_number}}</span>
+                </div>
+                <div class="order-summary-row">
+                    <span class="order-summary-label">Order Date</span>
+                    <span class="order-summary-value">{{order_date}}</span>
+                </div>
+                <div class="order-summary-row">
+                    <span class="order-summary-label">Estimated Delivery</span>
+                    <span class="order-summary-value">3-5 Business Days</span>
+                </div>
+            </div>
+
+            <div class="order-items">
+                <h3>Order Items</h3>
+                <table class="item-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th style="text-align: right;">Price</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{order_items}}
+                    </tbody>
+                </table>
+                <div class="total-row">
+                    Total Amount: ₹{{order_total}}
+                </div>
+            </div>
+
+            <div class="delivery-info">
+                <h4>📦 Delivery Address</h4>
+                <p>
+                    {{delivery_address}}<br>
+                    {{city}}, {{state}} {{pincode}}<br>
+                    {{customer_phone}}
+                </p>
+            </div>
+
+            <center>
+                <a href="{{view_order_url}}" class="action-button">View Order Details</a>
+            </center>
+
+            <div class="divider"></div>
+
+            <h3 style="color: #1e40af; margin-bottom: 12px;">What's Next?</h3>
+            <p style="margin-bottom: 12px;">
+                We're preparing your order for shipment. You'll receive a tracking number via email once your items are on their way. In the meantime, you can:
+            </p>
+            <ul style="margin-left: 20px; color: #6b7280; line-height: 1.8;">
+                <li>Track your order status in your account dashboard</li>
+                <li>Download an invoice from your order details page</li>
+                <li>Contact our support team if you have any questions</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p><strong>Need Help?</strong></p>
+            <p>If you have any questions about your order, please contact us at support@bookstore.com or call {{support_phone}}</p>
+            <p style="margin-top: 16px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                © 2024 Books Bookstore. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

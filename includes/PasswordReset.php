@@ -28,12 +28,11 @@ class PasswordReset {
         
         // Insert token into database
         $stmt = $this->conn->prepare("
-            INSERT OR REPLACE INTO password_reset_tokens (user_id, token, expires_at) 
+            INSERT INTO password_reset_tokens (user_id, token, expires_at)
             VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE token = VALUES(token), expires_at = VALUES(expires_at)
         ");
-        $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
-        $stmt->bindValue(2, $token, SQLITE3_TEXT);
-        $stmt->bindValue(3, $expires_at, SQLITE3_TEXT);
+        $stmt->bind_param("iss", $user_id, $token, $expires_at);
         $stmt->execute();
         $stmt->close();
         
@@ -115,23 +114,23 @@ class PasswordReset {
         try {
             // Check if token exists and is valid
             $stmt = $this->conn->prepare("
-                SELECT prt.*, u.email, u.full_name 
+                SELECT prt.*, u.email, u.full_name
                 FROM password_reset_tokens prt
                 JOIN users u ON prt.user_id = u.id
-                WHERE prt.user_id = ? AND prt.token = ? AND prt.expires_at > datetime('now')
+                WHERE prt.user_id = ? AND prt.token = ? AND prt.expires_at > NOW()
             ");
-            $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
-            $stmt->bindValue(2, $token, SQLITE3_TEXT);
-            $result = $stmt->execute();
-            
-            if (!$result || !$result->fetchArray(SQLITE3_ASSOC)) {
+            $stmt->bind_param("is", $user_id, $token);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            $token_data = $result->fetch_assoc();
+            if (!$token_data) {
                 return [
                     'success' => false,
                     'error' => 'Invalid or expired reset token.'
                 ];
             }
-            
-            $token_data = $result->fetchArray(SQLITE3_ASSOC);
+
             $stmt->close();
             
             return [
@@ -170,17 +169,16 @@ class PasswordReset {
             
             // Hash new password
             $password_hash = password_hash($new_password, PASSWORD_DEFAULT);
-            
+
             // Update user password
             $update_stmt = $this->conn->prepare("UPDATE users SET password = ? WHERE id = ?");
-            $update_stmt->bindValue(1, $password_hash, SQLITE3_TEXT);
-            $update_stmt->bindValue(2, $user_id, SQLITE3_INTEGER);
+            $update_stmt->bind_param("si", $password_hash, $user_id);
             $update_stmt->execute();
             $update_stmt->close();
-            
+
             // Delete used token
             $delete_stmt = $this->conn->prepare("DELETE FROM password_reset_tokens WHERE user_id = ?");
-            $delete_stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+            $delete_stmt->bind_param("i", $user_id);
             $delete_stmt->execute();
             $delete_stmt->close();
             
@@ -208,18 +206,19 @@ class PasswordReset {
         try {
             // Check if user exists
             $stmt = $this->conn->prepare("SELECT id, full_name, email FROM users WHERE email = ?");
-            $stmt->bindValue(1, $email, SQLITE3_TEXT);
-            $result = $stmt->execute();
-            
-            if (!$result || !$result->fetchArray(SQLITE3_ASSOC)) {
+            $stmt->bind_param("s", $email);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            $user = $result->fetch_assoc();
+            if (!$user) {
                 // For security, we don't reveal if email exists
                 return [
                     'success' => true,
                     'message' => 'If an account exists with this email, a password reset link has been sent.'
                 ];
             }
-            
-            $user = $result->fetchArray(SQLITE3_ASSOC);
+
             $stmt->close();
             
             // Generate reset token
@@ -255,11 +254,11 @@ class PasswordReset {
      * @return int Number of deleted tokens
      */
     public function cleanExpiredTokens() {
-        $stmt = $this->conn->prepare("DELETE FROM password_reset_tokens WHERE expires_at < datetime('now')");
+        $stmt = $this->conn->prepare("DELETE FROM password_reset_tokens WHERE expires_at < NOW()");
         $stmt->execute();
+        $affected_rows = $this->conn->affected_rows;
         $stmt->close();
-        
-        // SQLite doesn't have affected_rows, so we can't return count
-        return 0;
+
+        return $affected_rows;
     }
 }

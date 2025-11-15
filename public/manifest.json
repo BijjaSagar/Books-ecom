@@ -1,0 +1,70 @@
+{
+  "name": "Bookory - Book E-commerce Dashboard",
+  "short_name": "Bookory Admin",
+  "description": "Professional admin dashboard for managing your bookstore",
+  "start_url": "/admin/mobile-dashboard.php",
+  "display": "standalone",
+  "scope": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#007bff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/logo-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/images/screenshot1.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/screenshot2.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Sales Dashboard",
+      "short_name": "Sales",
+      "description": "View sales performance metrics",
+      "url": "/admin/sales-dashboard.php",
+      "icons": [
+        {
+          "src": "/images/icon-sales.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "short_name": "Stock",
+      "description": "Check inventory levels",
+      "url": "/admin/inventory-management.php",
+      "icons": [
+        {
+          "src": "/images/icon-inventory.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

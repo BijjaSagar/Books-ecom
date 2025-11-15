@@ -10,6 +10,7 @@ if (isset($_SESSION['admin_id'])) {
 }
 
 $errors = [];
+$admin_count = 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
@@ -20,43 +21,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // Check if this is the first time setup
         $admin_check = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
-        $admin_count = $admin_check->fetchArray(SQLITE3_ASSOC)['count'];
-        
-        if ($admin_count == 0) {
+        if ($admin_check) {
+            $row = $admin_check->fetch_assoc();
+            $admin_count = $row ? $row['count'] : 0;
+        }
+
+        if (empty($errors) && $admin_count == 0) {
             // First time setup - create default admin
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("INSERT INTO users (full_name, email, password, role, created_at) VALUES (?, ?, ?, 'admin', datetime('now'))");
-            $admin_name = "Administrator";
-            $stmt->bindValue(1, $admin_name, SQLITE3_TEXT);
-            $stmt->bindValue(2, $email, SQLITE3_TEXT);
-            $stmt->bindValue(3, $hashed_password, SQLITE3_TEXT);
-            
-            if ($stmt->execute()) {
-                $_SESSION['admin_id'] = $conn->lastInsertRowID();
-                $_SESSION['admin_name'] = $admin_name;
-                $_SESSION['setup_message'] = "Admin account created successfully!";
-                header("Location: amazon-dashboard.php");
-                exit();
+            $stmt = $conn->prepare("INSERT INTO users (full_name, email, password, role, created_at) VALUES (?, ?, ?, 'admin', NOW())");
+            if (!$stmt) {
+                $errors[] = "Database error: " . $conn->error;
             } else {
-                $errors[] = "Failed to create admin account.";
-            }
-        } else {
-            // Regular login
-            $stmt = $conn->prepare("SELECT id, full_name, email, password FROM users WHERE email = ? AND role = 'admin'");
-            $stmt->bindValue(1, $email, SQLITE3_TEXT);
-            $result = $stmt->execute();
+                $admin_name = "Administrator";
+                $stmt->bind_param("sss", $admin_name, $email, $hashed_password);
 
-            if ($user = $result->fetchArray(SQLITE3_ASSOC)) {
-                if (password_verify($password, $user['password'])) {
-                    $_SESSION['admin_id'] = $user['id'];
-                    $_SESSION['admin_name'] = $user['full_name'];
-                    header("Location: amazon-dashboard.php");
+                if ($stmt->execute()) {
+                    $_SESSION['admin_id'] = $conn->insert_id;
+                    $_SESSION['admin_name'] = $admin_name;
+                    $_SESSION['setup_message'] = "Admin account created successfully!";
+                    header("Location: dashboard.php");
                     exit();
                 } else {
-                    $errors[] = "Invalid credentials provided.";
+                    $errors[] = "Failed to create admin account: " . $stmt->error;
                 }
+                $stmt->close();
+            }
+        } elseif (empty($errors)) {
+            // Regular login
+            $stmt = $conn->prepare("SELECT id, full_name, email, password FROM users WHERE email = ? AND role = 'admin'");
+            if (!$stmt) {
+                $errors[] = "Database error: " . $conn->error;
             } else {
-                $errors[] = "No admin account found with that email address.";
+                $stmt->bind_param("s", $email);
+                if ($stmt->execute()) {
+                    $result = $stmt->get_result();
+                    $user = $result->fetch_assoc();
+
+                    if ($user && password_verify($password, $user['password'])) {
+                        $_SESSION['admin_id'] = $user['id'];
+                        $_SESSION['admin_name'] = $user['full_name'];
+                        header("Location: dashboard.php");
+                        exit();
+                    } else {
+                        $errors[] = "Invalid credentials provided.";
+                    }
+                } else {
+                    $errors[] = "Login error: " . $stmt->error;
+                }
+                $stmt->close();
             }
         }
     }
@@ -67,9 +80,16 @@ $settings_query = "SELECT setting_key, setting_value FROM site_settings";
 $settings_result = $conn->query($settings_query);
 $settings = ['site_name' => 'Bookory'];
 if ($settings_result) {
-    while ($row = $settings_result->fetchArray(SQLITE3_ASSOC)) {
+    while ($row = $settings_result->fetch_assoc()) {
         $settings[$row['setting_key']] = $row['setting_value'];
     }
+}
+
+// Get admin count for display
+$admin_result = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
+if ($admin_result) {
+    $row = $admin_result->fetch_assoc();
+    $admin_count = $row ? $row['count'] : 0;
 }
 ?>
 <!DOCTYPE html>
@@ -276,11 +296,7 @@ if ($settings_result) {
         </div>
         
         <div class="login-body">
-            <?php
-            $admin_check = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'admin'");
-            $admin_count = $admin_check->fetchArray(SQLITE3_ASSOC)['count'];
-            
-            if ($admin_count == 0): ?>
+            <?php if ($admin_count == 0): ?>
                 <div class="setup-notice">
                     <strong>First Time Setup:</strong>
                     Enter your email and create a password to set up your admin account.

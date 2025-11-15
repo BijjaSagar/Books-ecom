@@ -223,7 +223,7 @@ renderProfessionalJavaScript();
                 <h1 class="page-title">📚 Product Management</h1>
                 <p class="page-subtitle">Manage your book inventory and listings</p>
             </div>
-            <button class="btn-professional btn-primary-professional" onclick="openModal('productModal')">
+            <button class="btn-professional btn-primary-professional" onclick="openNewProductModal()">
                 <span>➕</span> Add New Book
             </button>
         </div>
@@ -378,12 +378,11 @@ renderProfessionalJavaScript();
                                                 style="padding: var(--spacing-1) var(--spacing-2); font-size: var(--font-size-xs);">
                                             <span>✏️</span> Edit
                                         </button>
-                                        <a href="products.php?action=delete&id=<?php echo $row['id']; ?>" 
-                                           class="btn-professional btn-danger-professional" 
-                                           onclick="return confirm('Are you sure you want to delete this book?');"
-                                           style="padding: var(--spacing-1) var(--spacing-2); font-size: var(--font-size-xs);">
+                                        <button class="btn-professional btn-danger-professional"
+                                                onclick="openDeleteConfirmDialog(<?php echo $row['id']; ?>, '<?php echo htmlspecialchars($row['title']); ?>')"
+                                                style="padding: var(--spacing-1) var(--spacing-2); font-size: var(--font-size-xs);">
                                             <span>🗑️</span> Delete
-                                        </a>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -394,9 +393,9 @@ renderProfessionalJavaScript();
         </div>
     </div>
 
-    <!-- Professional Add/Edit Book Modal -->
+    <!-- Professional Add/Edit Book Modal - Comprehensive Form -->
     <div class="modal-professional" id="productModal">
-        <div class="modal-content-professional" style="max-width: 800px;">
+        <div class="modal-content-professional" style="max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
             <div class="modal-header-professional">
                 <h4 class="modal-title" id="productModalLabel">
                     <span>📚</span> Add New Book
@@ -406,363 +405,380 @@ renderProfessionalJavaScript();
                 </button>
             </div>
             
-            <div class="modal-body-professional">
+            <div class="modal-body-professional" style="overflow-y: auto; flex: 1;">
                 <form action="products.php" method="POST" enctype="multipart/form-data" id="productForm" class="form-professional">
                     <input type="hidden" name="product_id" id="product_id" value="0">
                     <input type="hidden" name="existing_cover_image" id="existing_cover_image">
-                    
-                    <!-- Professional Tab Navigation -->
-                    <div class="mb-4">
-                        <div class="d-flex flex-wrap gap-2 mb-3" id="bookTabs">
-                            <button class="btn-professional btn-outline-professional active-step" id="basic-tab" data-step="0" type="button">
-                                <span>1️⃣</span> Basic Info
-                            </button>
-                            <button class="btn-professional btn-outline-professional" id="details-tab" data-step="1" type="button">
-                                <span>2️⃣</span> Book Details
-                            </button>
-                            <button class="btn-professional btn-outline-professional" id="pricing-tab" data-step="2" type="button">
-                                <span>3️⃣</span> Pricing
-                            </button>
-                            <button class="btn-professional btn-outline-professional" id="seo-tab" data-step="3" type="button">
-                                <span>4️⃣</span> SEO
-                            </button>
+
+                    <!-- Section 1: Basic Information -->
+                    <div class="form-section mb-4 pb-3 border-bottom">
+                        <h5 class="mb-3" style="color: var(--primary); font-weight: 600;">
+                            <span>📖</span> Basic Information
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Book Title *</label>
+                                    <input type="text" class="form-control-professional" id="title" name="title" placeholder="Enter book title" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Author *</label>
+                                    <input type="text" class="form-control-professional" id="author" name="author" placeholder="Author name" required>
+                                </div>
+                            </div>
                         </div>
-                        
-                        <!-- Step Description -->
-                        <div class="text-center">
-                            <div class="status-badge-professional status-info">
-                                <span class="fw-bold" id="currentStep">Step 1</span> of 4 - <span id="stepDescription">Enter basic book information</span>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Brand Name</label>
+                                    <input type="text" class="form-control-professional" id="brand_name" name="brand_name" placeholder="Brand name">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Category</label>
+                                    <select class="form-select form-control-professional" id="category_id" name="category_id">
+                                        <option value="">Select Category</option>
+                                        <?php
+                                        $result_categories->data_seek(0);
+                                        while($category = $result_categories->fetch_assoc()):
+                                        ?>
+                                            <option value="<?php echo $category['id']; ?>"><?php echo htmlspecialchars($category['name']); ?></option>
+                                        <?php endwhile; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">SKU</label>
+                                    <input type="text" class="form-control-professional" id="sku" name="sku" placeholder="Auto-generated if blank">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="form-group-professional">
+                                <label class="form-label-professional">Description *</label>
+                                <textarea class="form-control-professional" id="description" name="description" rows="4" placeholder="Enter detailed description" required></textarea>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="tab-content" id="bookTabContent">
-                        <!-- Step 1: Basic Information -->
-                        <div class="tab-pane fade show active" id="basic">
-                            <div class="row g-4">
-                                <div class="col-md-6">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">📖 Book Title *</label>
-                                        <input type="text" class="form-control-professional" id="title" name="title" placeholder="Book Title" required>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">✍️ Author *</label>
-                                        <input type="text" class="form-control-professional" id="author" name="author" placeholder="Author Name" required>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row g-4 mt-2">
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">🏷️ Category</label>
-                                        <select class="form-control-professional form-select-professional" id="category_id" name="category_id">
-                                            <option value="">Choose Category</option>
-                                            <?php 
-                                            $result_categories->data_seek(0);
-                                            while($category = $result_categories->fetch_assoc()): 
-                                            ?>
-                                                <option value="<?php echo $category['id']; ?>"><?php echo htmlspecialchars($category['name']); ?></option>
-                                            <?php endwhile; ?>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">📊 ISBN-13</label>
-                                        <input type="text" class="form-control-professional" id="isbn_13" name="isbn_13" placeholder="ISBN-13" maxlength="13">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">🏷️ SKU</label>
-                                        <input type="text" class="form-control-professional" id="sku" name="sku" placeholder="SKU">
-                                        <small class="text-muted">Auto-generated if left blank</small>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-4">
-                                <div class="form-group-professional">
-                                    <label class="form-label-professional">📝 Description *</label>
-                                    <textarea class="form-control-professional" id="description" name="description" rows="5" placeholder="Enter a detailed description of the book..." required></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-4">
-                                <div class="form-group-professional">
-                                    <label class="form-label-professional">🖼️ Book Images</label>
-                                    
-                                    <!-- Main Cover Image -->
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <div class="professional-card">
-                                                <div class="card-body-professional text-center">
-                                                    <input class="form-control d-none" type="file" id="cover_image" name="cover_image" accept="image/*">
-                                                    <div class="upload-content" onclick="document.getElementById('cover_image').click();" style="cursor: pointer;">
-                                                        <i class="bi bi-image text-primary" style="font-size: 2.5rem;"></i>
-                                                        <h6 class="mt-2 mb-1">Main Cover Image</h6>
-                                                        <small class="text-muted">Click to upload front cover</small>
-                                                        <div class="mt-2">
-                                                            <span class="status-badge-professional status-primary">Primary</span>
-                                                        </div>
-                                                    </div>
-                                                    <div id="cover-preview" class="mt-3" style="display: none;">
-                                                        <img id="cover-img" src="" alt="Cover Preview" class="img-fluid rounded" style="max-height: 150px;">
-                                                        <div class="mt-2">
-                                                            <button type="button" class="btn-professional btn-danger-professional" onclick="removeCoverImage()">
-                                                                <i class="bi bi-trash"></i> Remove
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Additional Images -->
-                                        <div class="col-md-6">
-                                            <div class="professional-card">
-                                                <div class="card-body-professional text-center">
-                                                    <input class="form-control d-none" type="file" id="additional_images" name="additional_images[]" accept="image/*" multiple>
-                                                    <div class="upload-content" onclick="document.getElementById('additional_images').click();" style="cursor: pointer;">
-                                                        <i class="bi bi-images text-success" style="font-size: 2.5rem;"></i>
-                                                        <h6 class="mt-2 mb-1">Additional Images</h6>
-                                                        <small class="text-muted">Back cover, inside pages, etc.</small>
-                                                        <div class="mt-2">
-                                                            <span class="status-badge-professional status-success">Multiple (Max 5)</span>
-                                                        </div>
-                                                    </div>
-                                                    <div id="additional-preview" class="mt-3">
-                                                        <!-- Additional images will be displayed here -->
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Image Guidelines -->
-                                    <div class="alert-professional alert-info-professional mt-3">
-                                        <span>📸</span>
-                                        <div>
-                                            <h6 class="mb-2">Image Guidelines</h6>
-                                            <ul class="mb-0 small">
-                                                <li><strong>Main Cover:</strong> Front cover image (300x400px recommended)</li>
-                                                <li><strong>Additional Images:</strong> Back cover, inside pages, author photo, etc.</li>
-                                                <li><strong>Format:</strong> JPG, PNG, WebP (Max 5MB each)</li>
-                                                <li><strong>Quality:</strong> High resolution for better customer experience</li>
-                                                <li><strong>Limit:</strong> 1 main cover + up to 5 additional images</li>
-                                            </ul>
+
+                    <!-- Section 2: Images -->
+                    <div class="form-section mb-4 pb-3 border-bottom">
+                        <h5 class="mb-3" style="color: var(--primary); font-weight: 600;">
+                            <span>🖼️</span> Product Images
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="professional-card" style="cursor: pointer;" onclick="document.getElementById('cover_image').click();">
+                                    <div class="card-body-professional text-center" style="padding: 2rem;">
+                                        <input class="form-control d-none" type="file" id="cover_image" name="cover_image" accept="image/*">
+                                        <i class="bi bi-image" style="font-size: 2.5rem; color: var(--primary);"></i>
+                                        <h6 class="mt-2">Main Cover Image</h6>
+                                        <small class="text-muted">Click to upload</small>
+                                        <div id="cover-preview" class="mt-3" style="display: none;">
+                                            <img id="cover-img" src="" alt="Cover" class="img-fluid rounded" style="max-height: 100px;">
+                                            <button type="button" class="btn btn-sm btn-danger mt-2" onclick="removeCoverImage()">Remove</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <!-- Step 2: Book Details -->
-                        <div class="tab-pane fade" id="details">
-                            <div class="row g-4">
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">📊 ISBN-10</label>
-                                        <input type="text" class="form-control-professional" id="isbn_10" name="isbn_10" placeholder="ISBN-10" maxlength="10">
+                            <div class="col-md-6">
+                                <div class="professional-card" style="cursor: pointer;" onclick="document.getElementById('additional_images').click();">
+                                    <div class="card-body-professional text-center" style="padding: 2rem;">
+                                        <input class="form-control d-none" type="file" id="additional_images" name="additional_images[]" accept="image/*" multiple>
+                                        <i class="bi bi-images" style="font-size: 2.5rem; color: var(--success);"></i>
+                                        <h6 class="mt-2">Additional Images</h6>
+                                        <small class="text-muted">Up to 5 images</small>
+                                        <div id="additional-preview" class="mt-3"></div>
                                     </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">🏷️ EAN</label>
-                                        <input type="text" class="form-control-professional" id="ean" name="ean" placeholder="EAN" maxlength="13">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">🏢 Publisher</label>
-                                        <input type="text" class="form-control-professional" id="publisher" name="publisher" placeholder="Publisher">
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row g-4 mt-2">
-                                <div class="col-md-6">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">📅 Publication Date</label>
-                                        <input type="date" class="form-control-professional" id="publication_date" name="publication_date">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">🌍 Language</label>
-                                        <select class="form-control-professional form-select-professional" id="language" name="language">
-                                            <option value="English">🇺🇸 English</option>
-                                            <option value="Hindi">🇮🇳 Hindi</option>
-                                            <option value="Bengali">🇧🇩 Bengali</option>
-                                            <option value="Tamil">Tamil</option>
-                                            <option value="Telugu">Telugu</option>
-                                            <option value="Marathi">Marathi</option>
-                                            <option value="Gujarati">Gujarati</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row g-4 mt-2">
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">📄 Pages</label>
-                                        <input type="number" class="form-control-professional" id="pages" name="pages" placeholder="Pages" min="1">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">📖 Binding Type</label>
-                                        <select class="form-control-professional form-select-professional" id="binding_type" name="binding_type">
-                                            <option value="Paperback">📖 Paperback</option>
-                                            <option value="Hardcover">📘 Hardcover</option>
-                                            <option value="eBook">💻 eBook</option>
-                                            <option value="Audiobook">🎧 Audiobook</option>
-                                            <option value="Board Book">📚 Board Book</option>
-                                            <option value="Mass Market Paperback">📙 Mass Market</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">⚖️ Weight (grams)</label>
-                                        <input type="number" step="0.01" class="form-control-professional" id="weight" name="weight" placeholder="Weight" min="0">
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row g-4 mt-2">
-                                <div class="col-md-6">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">📏 Dimensions (L x W x H cm)</label>
-                                        <input type="text" class="form-control-professional" id="dimensions" name="dimensions" placeholder="Dimensions">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">📑 Edition</label>
-                                        <input type="text" class="form-control-professional" id="edition" name="edition" placeholder="Edition">
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-4">
-                                <div class="form-group-professional">
-                                    <label class="form-label-professional">📚 Series</label>
-                                    <input type="text" class="form-control-professional" id="series" name="series" placeholder="Series">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Step 3: Pricing & Stock -->
-                        <div class="tab-pane fade" id="pricing">
-                            <div class="row g-4">
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">💰 Original Price (₹)</label>
-                                        <input type="number" step="0.01" class="form-control-professional" id="original_price" name="original_price" placeholder="Original Price" min="0">
-                                        <small class="text-muted">MRP or list price</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">💸 Selling Price (₹) *</label>
-                                        <input type="number" step="0.01" class="form-control-professional" id="price" name="price" placeholder="Selling Price" required min="0">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">📦 Stock Quantity *</label>
-                                        <input type="number" class="form-control-professional" id="stock_quantity" name="stock_quantity" placeholder="Stock" required min="0">
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row g-4 mt-2">
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">📋 Product Type</label>
-                                        <select class="form-control-professional form-select-professional" id="product_type" name="product_type">
-                                            <option value="physical">📚 Physical Book</option>
-                                            <option value="digital">💻 Digital Book</option>
-                                            <option value="affiliate">🔗 Affiliate Link</option>
-                                            <option value="both">📚💻 Both Types</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">⚡ Status</label>
-                                        <select class="form-control-professional form-select-professional" id="status" name="status">
-                                            <option value="active">✅ Active</option>
-                                            <option value="inactive">⏸️ Inactive</option>
-                                            <option value="draft">📝 Draft</option>
-                                            <option value="out_of_stock">📦 Out of Stock</option>
-                                            <option value="discontinued">❌ Discontinued</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group-professional">
-                                        <label class="form-label-professional">⭐ Featured Book</label>
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="featured" name="featured" style="transform: scale(1.5);">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-4">
-                                <div class="form-group-professional">
-                                    <label class="form-label-professional">🔗 Affiliate Link (Optional)</label>
-                                    <input type="url" class="form-control-professional" id="affiliate_link" name="affiliate_link" placeholder="Affiliate Link">
-                                    <small class="text-muted">For external store or affiliate marketing links</small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Step 4: SEO & Marketing -->
-                        <div class="tab-pane fade" id="seo">
-                            <div class="mb-4">
-                                <div class="form-group-professional">
-                                    <label class="form-label-professional">🔍 SEO Meta Title</label>
-                                    <input type="text" class="form-control-professional" id="meta_title" name="meta_title" placeholder="Meta Title" maxlength="255">
-                                </div>
-                            </div>
-                            
-                            <div class="mb-4">
-                                <div class="form-group-professional">
-                                    <label class="form-label-professional">📝 SEO Meta Description</label>
-                                    <textarea class="form-control-professional" id="meta_description" name="meta_description" rows="4" maxlength="160" placeholder="Write a compelling description for search engines..."></textarea>
-                                    <small class="text-muted">Description shown in search results</small>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="modal-footer-professional">
+
+                    <!-- Section 3: Product Details & ISBNs -->
+                    <div class="form-section mb-4 pb-3 border-bottom">
+                        <h5 class="mb-3" style="color: var(--primary); font-weight: 600;">
+                            <span>📚</span> Book Details
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">ISBN</label>
+                                    <input type="text" class="form-control-professional" id="isbn" name="isbn" placeholder="Generic ISBN">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">ISBN-10</label>
+                                    <input type="text" class="form-control-professional" id="isbn_10" name="isbn_10" placeholder="ISBN-10" maxlength="10">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">ISBN-13</label>
+                                    <input type="text" class="form-control-professional" id="isbn_13" name="isbn_13" placeholder="ISBN-13" maxlength="13">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">EAN</label>
+                                    <input type="text" class="form-control-professional" id="ean" name="ean" placeholder="EAN" maxlength="13">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Publisher</label>
+                                    <input type="text" class="form-control-professional" id="publisher" name="publisher" placeholder="Publisher name">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Manufacturer</label>
+                                    <input type="text" class="form-control-professional" id="manufacturer" name="manufacturer" placeholder="Manufacturer">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Binding Type</label>
+                                    <select class="form-select form-control-professional" id="binding_type" name="binding_type">
+                                        <option value="Paperback">Paperback</option>
+                                        <option value="Hardcover">Hardcover</option>
+                                        <option value="eBook">eBook</option>
+                                        <option value="Audiobook">Audiobook</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Format</label>
+                                    <select class="form-select form-control-professional" id="format" name="format">
+                                        <option value="">Select Format</option>
+                                        <option value="Hardcover">Hardcover</option>
+                                        <option value="Paperback">Paperback</option>
+                                        <option value="Picture Book">Picture Book</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Pages</label>
+                                    <input type="number" class="form-control-professional" id="pages" name="pages" placeholder="Number of pages">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Edition</label>
+                                    <input type="text" class="form-control-professional" id="edition" name="edition" placeholder="Edition">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Dimensions</label>
+                                    <input type="text" class="form-control-professional" id="dimensions" name="dimensions" placeholder="L x W x H cm">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Weight (grams)</label>
+                                    <input type="number" step="0.01" class="form-control-professional" id="weight" name="weight" placeholder="Weight">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Publication Date</label>
+                                    <input type="date" class="form-control-professional" id="publication_date" name="publication_date">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Language</label>
+                                    <select class="form-select form-control-professional" id="language" name="language">
+                                        <option value="English">English</option>
+                                        <option value="Hindi">Hindi</option>
+                                        <option value="Bengali">Bengali</option>
+                                        <option value="Tamil">Tamil</option>
+                                        <option value="Marathi">Marathi</option>
+                                        <option value="Arabic">Arabic</option>
+                                        <option value="Urdu">Urdu</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Series Title</label>
+                                    <input type="text" class="form-control-professional" id="series" name="series" placeholder="Series title">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 4: Pricing & Inventory -->
+                    <div class="form-section mb-4 pb-3 border-bottom">
+                        <h5 class="mb-3" style="color: var(--primary); font-weight: 600;">
+                            <span>💰</span> Pricing & Inventory
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Selling Price (₹) *</label>
+                                    <input type="number" step="0.01" class="form-control-professional" id="price" name="price" placeholder="Selling price" min="0" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Original Price (₹)</label>
+                                    <input type="number" step="0.01" class="form-control-professional" id="original_price" name="original_price" placeholder="MRP" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Stock Quantity *</label>
+                                    <input type="number" class="form-control-professional" id="stock_quantity" name="stock_quantity" placeholder="Stock" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Product Type</label>
+                                    <select class="form-select form-control-professional" id="product_type" name="product_type">
+                                        <option value="physical">Physical Book</option>
+                                        <option value="digital">Digital Book</option>
+                                        <option value="affiliate">Affiliate Link</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Status</label>
+                                    <select class="form-select form-control-professional" id="status" name="status">
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                        <option value="draft">Draft</option>
+                                        <option value="out_of_stock">Out of Stock</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Featured</label>
+                                    <div class="mt-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="featured" name="featured">
+                                            <label class="form-check-label" for="featured">
+                                                Mark as featured product
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <div class="form-group-professional">
+                                    <label class="form-label-professional">Affiliate Link</label>
+                                    <input type="url" class="form-control-professional" id="affiliate_link" name="affiliate_link" placeholder="https://example.com/product">
+                                    <small class="text-muted">Optional: External store or affiliate link</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 5: SEO & Marketing -->
+                    <div class="form-section mb-4">
+                        <h5 class="mb-3" style="color: var(--primary); font-weight: 600;">
+                            <span>🔍</span> SEO & Marketing
+                        </h5>
+                        <div class="form-group-professional mb-3">
+                            <label class="form-label-professional">SEO Meta Title</label>
+                            <input type="text" class="form-control-professional" id="meta_title" name="meta_title" placeholder="SEO meta title" maxlength="255">
+                            <small class="text-muted">Leave blank to use product title</small>
+                        </div>
+                        <div class="form-group-professional">
+                            <label class="form-label-professional">SEO Meta Description</label>
+                            <textarea class="form-control-professional" id="meta_description" name="meta_description" rows="3" placeholder="SEO meta description (160 characters)" maxlength="160"></textarea>
+                            <small class="text-muted">Brief description for search engines</small>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="bookTabContent" style="display: none;"></div>
+
+                    <!-- Sticky Modal Footer -->
+                    <div class="modal-footer-professional" style="background-color: #f8f9fa; border-top: 1px solid #e9ecef; flex-shrink: 0; margin-top: auto;">
                         <button type="button" class="btn-professional btn-outline-professional" onclick="closeModal('productModal')">
                             <span>❌</span> Cancel
                         </button>
-                        <button type="button" class="btn-professional btn-outline-professional" id="prevBtn" style="display: none;">
-                            <span>⬅️</span> Previous
-                        </button>
-                        <button type="button" class="btn-professional btn-primary-professional" id="nextBtn">
-                            <span>➡️</span> Next
-                        </button>
-                        <button type="submit" class="btn-professional btn-success-professional" id="submitBtn" style="display: none;">
-                            <span>💾</span> Save Book
+                        <button type="submit" class="btn-professional btn-success-professional" id="submitBtn" style="min-width: 140px;">
+                            <span id="submitBtnText">💾 Save Product</span>
+                            <span id="submitSpinner" style="display: none; margin-left: 0.5rem;">
+                                <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite;"></i>
+                            </span>
                         </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-professional" id="deleteConfirmModal">
+        <div class="modal-content-professional" style="max-width: 500px;">
+            <div class="modal-header-professional" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+                <h4 class="modal-title" style="color: white;">
+                    <span>⚠️</span> Delete Product
+                </h4>
+                <button type="button" class="btn-professional" style="background: none; border: none; font-size: 1.5rem; padding: var(--spacing-1); color: white;" onclick="closeModal('deleteConfirmModal')">
+                    <span>❌</span>
+                </button>
+            </div>
+
+            <div class="modal-body-professional">
+                <div style="text-align: center; padding: 2rem 0;">
+                    <i class="bi bi-exclamation-triangle" style="font-size: 3rem; color: #ff6b6b; display: block; margin-bottom: 1rem;"></i>
+                    <h5 style="color: var(--dark); margin-bottom: 1rem;">Are you sure?</h5>
+                    <p style="color: #6c757d; margin-bottom: 0.5rem;">You're about to delete:</p>
+                    <p style="color: var(--primary); font-weight: 600; font-size: 1.1rem; word-break: break-word;" id="deleteProductTitle"></p>
+                    <div style="background-color: #f8f9fa; border-left: 4px solid #ff6b6b; padding: 1rem; margin-top: 1.5rem; border-radius: 0.5rem;">
+                        <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">
+                            ⚠️ <strong>This action cannot be undone.</strong> The product will be permanently deleted from your inventory.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer-professional" style="background-color: #f8f9fa;">
+                <button type="button" class="btn-professional btn-outline-professional" onclick="closeModal('deleteConfirmModal')">
+                    <span>❌</span> Cancel
+                </button>
+                <button type="button" class="btn-professional btn-danger-professional" id="deleteConfirmBtn" onclick="confirmDelete()" style="min-width: 120px;">
+                    <span id="deleteBtnText">🗑️ Delete</span>
+                    <span id="deleteSpinner" style="display: none; margin-left: 0.5rem;">
+                        <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite;"></i>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -907,52 +923,144 @@ document.addEventListener('DOMContentLoaded', function() {
     if (productModal) {
         productModal.addEventListener('hidden.bs.modal', function () {
             console.log('🔄 Modal closed, resetting...');
+
+            // Reset form title and content
             modalTitle.innerHTML = '<span>📚</span> Add New Book';
             productForm.reset();
             document.getElementById('product_id').value = '0';
             document.getElementById('existing_cover_image').value = '';
-            
+
+            // Hide cover image preview
+            const coverPreview = document.getElementById('cover-preview');
+            if (coverPreview) {
+                coverPreview.style.display = 'none';
+                const coverImg = document.getElementById('cover-img');
+                if (coverImg) coverImg.src = '';
+            }
+
+            // Clear additional images preview
+            const additionalPreview = document.getElementById('additional-preview');
+            if (additionalPreview) {
+                additionalPreview.innerHTML = '';
+            }
+
             // Reset to first tab
             currentTabIndex = 0;
             showTab(0);
             updateStepUI();
-            
+
             // Clear validation classes
             document.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
                 el.classList.remove('is-valid', 'is-invalid');
             });
+
+            // Scroll to top
+            const modalBody = document.querySelector('.modal-body-professional');
+            if (modalBody) {
+                modalBody.scrollTop = 0;
+            }
+
+            console.log('✅ Modal reset complete');
         });
     }
+
+    // Handle add new product button click
+    window.openNewProductModal = function() {
+        console.log('➕ Opening new product modal');
+
+        // Reset form
+        modalTitle.innerHTML = '<span>📚</span> Add New Book';
+        productForm.reset();
+        document.getElementById('product_id').value = '0';
+        document.getElementById('existing_cover_image').value = '';
+
+        // Hide cover image preview
+        const coverPreview = document.getElementById('cover-preview');
+        if (coverPreview) {
+            coverPreview.style.display = 'none';
+            const coverImg = document.getElementById('cover-img');
+            if (coverImg) coverImg.src = '';
+        }
+
+        // Clear additional images preview
+        const additionalPreview = document.getElementById('additional-preview');
+        if (additionalPreview) {
+            additionalPreview.innerHTML = '';
+        }
+
+        // Clear all input fields
+        document.querySelectorAll('input[type="text"], input[type="number"], input[type="email"], input[type="url"], input[type="date"], textarea, select').forEach(field => {
+            if (field.id !== 'product_id' && field.id !== 'existing_cover_image') {
+                if (field.type === 'checkbox') {
+                    field.checked = false;
+                } else {
+                    field.value = '';
+                }
+            }
+        });
+
+        // Scroll to top
+        const modalBody = document.querySelector('.modal-body-professional');
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
+
+        // Open modal
+        openModal('productModal');
+        console.log('✅ New product modal opened');
+    };
 
     // Handle edit button click - FIXED FUNCTION
     window.openEditProductModal = function(data) {
         console.log('✏️ Opening edit modal with data:', data);
-        
+
         // Update modal title
         modalTitle.innerHTML = '<span>✏️</span> Edit Book';
-        
-        // Fill all form fields
+
+        // Set product ID and existing cover image first
+        document.getElementById('product_id').value = data.id;
+        document.getElementById('existing_cover_image').value = data.cover_image || '';
+
+        // Fill all form fields from database
         Object.keys(data).forEach(key => {
             const field = document.getElementById(key);
             if (field) {
                 if (field.type === 'checkbox') {
-                    field.checked = data[key] == 1;
+                    field.checked = data[key] == 1 || data[key] === true || data[key] === '1';
+                } else if (field.type === 'date') {
+                    // Format date properly for date input
+                    field.value = data[key] ? data[key].split(' ')[0] : '';
                 } else {
                     field.value = data[key] || '';
                 }
+                console.log(`✅ Field "${key}" set to:`, data[key]);
             }
         });
-        
+
         // Special handling for featured checkbox
         const featuredCheckbox = document.getElementById('featured');
         if (featuredCheckbox) {
-            featuredCheckbox.checked = data['featured'] == 1;
+            featuredCheckbox.checked = data['featured'] == 1 || data['featured'] === true || data['featured'] === '1';
+            console.log('✅ Featured checkbox set to:', featuredCheckbox.checked);
         }
-        
-        // Set product ID
-        document.getElementById('product_id').value = data.id;
-        document.getElementById('existing_cover_image').value = data.cover_image || '';
-        
+
+        // Show existing cover image preview
+        if (data.cover_image) {
+            const coverPreview = document.getElementById('cover-preview');
+            const coverImg = document.getElementById('cover-img');
+            if (coverPreview && coverImg) {
+                coverImg.src = '/bookshelf/public/images/products/' + data.cover_image;
+                coverPreview.style.display = 'block';
+                console.log('✅ Cover image preview displayed:', data.cover_image);
+            }
+        }
+
+        // Scroll to top of form
+        const modalBody = document.querySelector('.modal-body-professional');
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
+
         // Open modal
         openModal('productModal');
     };
@@ -1055,7 +1163,310 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🎯 Initializing UI...');
     updateStepUI();
     console.log('✅ Initialization complete!');
+
+    // ============================================
+    // FORM SUBMISSION HANDLER
+    // ============================================
+
+    productForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        console.log('📝 Form submitted');
+
+        // Validate required fields
+        const title = document.getElementById('title').value.trim();
+        const author = document.getElementById('author').value.trim();
+        const description = document.getElementById('description').value.trim();
+        const price = document.getElementById('price').value.trim();
+        const stock_quantity = document.getElementById('stock_quantity').value.trim();
+
+        if (!title || !author || !description || !price || !stock_quantity) {
+            alert('❌ Please fill in all required fields:\n- Title\n- Author\n- Description\n- Price\n- Stock Quantity');
+            return;
+        }
+
+        // Show loading state
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        document.getElementById('submitBtnText').style.display = 'none';
+        document.getElementById('submitSpinner').style.display = 'inline';
+
+        console.log('⏳ Sending form data to server...');
+
+        // Send form data via AJAX
+        const formData = new FormData(productForm);
+
+        fetch('products.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('📥 Response received:', response.status);
+            return response.text();
+        })
+        .then(data => {
+            console.log('📥 Response data:', data);
+
+            // Check if redirect happened (success) or error
+            if (data.includes('success') || data.includes('Product saved') || response.status === 200) {
+                console.log('✅ Product saved successfully');
+
+                // Close modal
+                closeModal('productModal');
+
+                // Show success message
+                showSaveSuccessMessage();
+
+                // Reload page
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else if (data.includes('error') || data.includes('Error')) {
+                console.error('❌ Save failed:', data);
+                showSaveErrorMessage('Failed to save product. Please try again.');
+
+                // Reset button
+                resetSubmitButton();
+            } else {
+                // Assume success if no error message
+                console.log('✅ Product saved');
+                closeModal('productModal');
+                showSaveSuccessMessage();
+
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error submitting form:', error);
+            showSaveErrorMessage('Error: ' + error.message);
+
+            // Reset button
+            resetSubmitButton();
+        });
+    });
+
+    console.log('✅ Form submission handler added');
 });
+
+// Reset submit button state
+function resetSubmitButton() {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = false;
+    document.getElementById('submitBtnText').style.display = 'inline';
+    document.getElementById('submitSpinner').style.display = 'none';
+}
+
+// Show success message for save
+function showSaveSuccessMessage() {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'alert-professional alert-success-professional';
+    messageDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; animation: slideIn 0.3s ease-out;';
+    messageDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="font-size: 1.5rem;">✅</span>
+            <div>
+                <h6 style="margin: 0; font-weight: 600;">Success</h6>
+                <p style="margin: 0; font-size: 0.9rem;">Product saved successfully!</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    setTimeout(() => {
+        messageDiv.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 5000);
+}
+
+// Show error message for save
+function showSaveErrorMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'alert-professional alert-danger-professional';
+    messageDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; animation: slideIn 0.3s ease-out;';
+    messageDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="font-size: 1.5rem;">❌</span>
+            <div>
+                <h6 style="margin: 0; font-weight: 600;">Error</h6>
+                <p style="margin: 0; font-size: 0.9rem;">${message}</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    setTimeout(() => {
+        messageDiv.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 5000);
+}
+
+console.log('✅ Form submission functionality initialized');
+
+// ============================================
+// DELETE PRODUCT FUNCTIONALITY
+// ============================================
+
+let deleteProductId = null;
+
+// Open delete confirmation dialog
+window.openDeleteConfirmDialog = function(productId, productTitle) {
+    console.log('🗑️ Opening delete confirmation for product:', productId, productTitle);
+
+    deleteProductId = productId;
+    document.getElementById('deleteProductTitle').textContent = productTitle;
+
+    // Reset button state
+    const deleteBtn = document.getElementById('deleteConfirmBtn');
+    deleteBtn.disabled = false;
+    document.getElementById('deleteBtnText').style.display = 'inline';
+    document.getElementById('deleteSpinner').style.display = 'none';
+
+    openModal('deleteConfirmModal');
+};
+
+// Confirm and execute delete
+window.confirmDelete = function() {
+    if (!deleteProductId) {
+        console.error('❌ No product ID set for deletion');
+        alert('Error: Product ID not found');
+        return;
+    }
+
+    const deleteBtn = document.getElementById('deleteConfirmBtn');
+    deleteBtn.disabled = true;
+    document.getElementById('deleteBtnText').style.display = 'none';
+    document.getElementById('deleteSpinner').style.display = 'inline';
+
+    console.log('🔄 Sending delete request for product:', deleteProductId);
+
+    // Send AJAX request to delete
+    fetch('delete-product.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: deleteProductId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('📥 Delete response:', data);
+
+        if (data.success) {
+            console.log('✅ Product deleted successfully');
+
+            // Close modal
+            closeModal('deleteConfirmModal');
+
+            // Show success message
+            showSuccessMessage(data.message || '✅ Product deleted successfully!');
+
+            // Reload page after 2 seconds
+            setTimeout(() => {
+                console.log('🔄 Reloading page...');
+                location.reload();
+            }, 2000);
+        } else {
+            console.error('❌ Delete failed:', data.message);
+            showErrorMessage(data.message || '❌ Failed to delete product');
+
+            // Reset button
+            deleteBtn.disabled = false;
+            document.getElementById('deleteBtnText').style.display = 'inline';
+            document.getElementById('deleteSpinner').style.display = 'none';
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error during delete:', error);
+        showErrorMessage('❌ Error: ' + error.message);
+
+        // Reset button
+        deleteBtn.disabled = false;
+        document.getElementById('deleteBtnText').style.display = 'inline';
+        document.getElementById('deleteSpinner').style.display = 'none';
+    });
+};
+
+// Show success message
+function showSuccessMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'alert-professional alert-success-professional';
+    messageDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; animation: slideIn 0.3s ease-out;';
+    messageDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="font-size: 1.5rem;">✅</span>
+            <div>
+                <h6 style="margin: 0; font-weight: 600;">Success</h6>
+                <p style="margin: 0; font-size: 0.9rem;">${message}</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        messageDiv.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 5000);
+}
+
+// Show error message
+function showErrorMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'alert-professional alert-danger-professional';
+    messageDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; animation: slideIn 0.3s ease-out;';
+    messageDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="font-size: 1.5rem;">❌</span>
+            <div>
+                <h6 style="margin: 0; font-weight: 600;">Error</h6>
+                <p style="margin: 0; font-size: 0.9rem;">${message}</p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(messageDiv);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        messageDiv.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => messageDiv.remove(), 300);
+    }, 5000);
+}
+
+// Add slide-in/out animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+console.log('✅ Delete functionality initialized');
 </script>
 
 <?php include '../includes/admin_footer.php'; ?>
