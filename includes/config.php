@@ -23,14 +23,312 @@ $db_name = env('DB_DATABASE');
 $db_port = env('DB_PORT', 3306);
 $db_charset = env('DB_CHARSET', 'utf8mb4');
 
-// Validate required database credentials
-if (empty($db_username) || empty($db_password) || empty($db_name)) {
-    error_log("CRITICAL: Database credentials not configured. Check .env file.");
+// ============================================
+// FALLBACK: If .env is not configured properly
+// ============================================
+// TEMPORARY: Replace these with your actual Hostinger credentials
+// Then configure .env file properly and remove this section
+// ============================================
 
-    if (env('APP_ENV') === 'development') {
-        die("Database configuration error. Please configure DB_USERNAME, DB_PASSWORD, and DB_DATABASE in .env file.");
-    } else {
-        die("Application configuration error. Please contact administrator.");
+$is_placeholder = in_array($db_password, ['CHANGE_THIS_PASSWORD', 'your_password_here', '', null]);
+
+if (empty($db_username) || empty($db_password) || empty($db_name) || $is_placeholder) {
+    error_log("WARNING: .env file not configured. Using fallback configuration.");
+
+    // ⚠️ TEMPORARY FALLBACK - REPLACE WITH YOUR ACTUAL CREDENTIALS! ⚠️
+    // Get these values from: hPanel → Hosting → MySQL Databases → Manage
+    $db_host = 'localhost';
+    $db_username = 'u618910819_books';      // ← REPLACE: Your MySQL username
+    $db_password = 'YOUR_PASSWORD_HERE';    // ← REPLACE: Your MySQL password
+    $db_name = 'u618910819_bookshelf_db';   // ← REPLACE: Your database name
+    $db_port = 3306;
+
+    // If still using placeholder, show configuration guide
+    if ($db_password === 'YOUR_PASSWORD_HERE' || empty($db_password)) {
+        http_response_code(503);
+        ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Configuration Required - Bookory</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.95;
+            font-size: 16px;
+        }
+        .content {
+            padding: 40px;
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+        .step h3 {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        .step h3::before {
+            content: "→";
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        .step ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .step li {
+            margin: 10px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        .step li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+        }
+        code {
+            background: #263238;
+            color: #aed581;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: "Courier New", Consolas, monospace;
+            font-size: 14px;
+            display: inline-block;
+        }
+        .code-block {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: "Courier New", Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .highlight {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .highlight strong {
+            color: #856404;
+            font-size: 16px;
+        }
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin: 10px 10px 10px 0;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+        }
+        .btn-secondary {
+            background: #6c757d;
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            color: #6c757d;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @media (max-width: 768px) {
+            .header h1 { font-size: 24px; }
+            .content { padding: 20px; }
+            .step { padding: 15px; }
+            .tabs { overflow-x: auto; }
+            .tab { white-space: nowrap; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ Database Configuration Required</h1>
+            <p>Complete setup to start using Bookory</p>
+        </div>
+
+        <div class="content">
+            <div class="highlight">
+                <strong>⚡ Quick Fix (2 Minutes):</strong><br>
+                Edit <code>includes/config.php</code> line 35 and replace <code>YOUR_PASSWORD_HERE</code> with your database password from hPanel.
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab(0)">Option 1: Edit .env (Recommended)</button>
+                <button class="tab" onclick="switchTab(1)">Option 2: Edit config.php (Quick)</button>
+            </div>
+
+            <div class="tab-content active">
+                <div class="step">
+                    <h3>Step 1: Get Your Database Credentials</h3>
+                    <ul>
+                        <li>Login to <a href="https://hpanel.hostinger.com" target="_blank"><strong>hPanel</strong></a></li>
+                        <li>Go to <strong>Hosting → MySQL Databases</strong></li>
+                        <li>Click <strong>Manage</strong> next to <code>u618910819_bookshelf_db</code></li>
+                        <li>Copy: <strong>Database Name</strong>, <strong>Username</strong>, <strong>Password</strong></li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3>Step 2: Edit .env File</h3>
+                    <ul>
+                        <li>In hPanel, go to <strong>Files → File Manager</strong></li>
+                        <li>Navigate to <code>public_html/bookshelf/</code></li>
+                        <li>Right-click <code>.env</code> → <strong>Edit</strong></li>
+                        <li>Update lines 24-28:</li>
+                    </ul>
+                    <div class="code-block">DB_HOST=localhost<br>DB_PORT=3306<br>DB_DATABASE=u618910819_bookshelf_db<br>DB_USERNAME=u618910819_books<br>DB_PASSWORD=<span style="background:#ffc107;color:#000;padding:2px 6px;border-radius:3px;">PASTE_YOUR_PASSWORD_HERE</span></div>
+                    <ul>
+                        <li>Click <strong>Save</strong></li>
+                        <li>Refresh this page</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="tab-content">
+                <div class="step">
+                    <h3>Step 1: Get Your Database Password</h3>
+                    <ul>
+                        <li>Login to <a href="https://hpanel.hostinger.com" target="_blank"><strong>hPanel</strong></a></li>
+                        <li>Go to <strong>Hosting → MySQL Databases</strong></li>
+                        <li>Click <strong>Manage</strong> next to your database</li>
+                        <li>Copy the <strong>Password</strong> shown</li>
+                    </ul>
+                </div>
+
+                <div class="step">
+                    <h3>Step 2: Edit config.php</h3>
+                    <ul>
+                        <li>In File Manager, navigate to <code>public_html/bookshelf/includes/</code></li>
+                        <li>Right-click <code>config.php</code> → <strong>Edit</strong></li>
+                        <li>Find line 35 (around line 35):</li>
+                    </ul>
+                    <div class="code-block">$db_password = 'YOUR_PASSWORD_HERE';    // ← REPLACE</div>
+                    <ul>
+                        <li>Replace <code>YOUR_PASSWORD_HERE</code> with your actual password</li>
+                        <li>Also verify <code>$db_username</code> and <code>$db_name</code> match your hPanel values</li>
+                        <li>Click <strong>Save</strong></li>
+                        <li>Refresh this page</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; text-align: center;">
+                <a href="https://hpanel.hostinger.com" class="btn" target="_blank">Open hPanel →</a>
+                <a href="javascript:location.reload()" class="btn btn-secondary">Refresh Page</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <strong>Server Path:</strong><br>
+            <code>/home/u618910819/domains/rhtechnology.in/public_html/bookshelf/includes/config.php</code>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(index) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach((tab, i) => {
+                if (i === index) {
+                    tab.classList.add('active');
+                    contents[i].classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                    contents[i].classList.remove('active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+        <?php
+        exit;
     }
 }
 
