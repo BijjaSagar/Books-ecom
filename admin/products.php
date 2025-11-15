@@ -63,8 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $affiliate_link = trim($_POST['affiliate_link'] ?? '');
     $meta_title = trim($_POST['meta_title'] ?? '');
     $meta_description = trim($_POST['meta_description'] ?? '');
-    
+
     $cover_image_name = $_POST['existing_cover_image'] ?? '';
+    $digital_file_path = $_POST['existing_digital_file'] ?? '';
     $additional_images = [];
     
     // Handle main cover image upload
@@ -111,25 +112,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Convert additional images array to JSON string for database storage
     $additional_images_json = !empty($additional_images) ? json_encode($additional_images) : null;
 
+    // Handle digital file upload (PDF, EPUB, etc.)
+    if (isset($_FILES['digital_file']) && $_FILES['digital_file']['error'] == 0) {
+        $target_dir = "../uploads/digital_products/";
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0755, true);
+        }
+
+        // Validate file type (only allow ebooks/documents)
+        $allowed_extensions = ['pdf', 'epub', 'mobi', 'azw', 'azw3'];
+        $file_extension = strtolower(pathinfo($_FILES['digital_file']['name'], PATHINFO_EXTENSION));
+
+        if (in_array($file_extension, $allowed_extensions)) {
+            $digital_file_name = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', basename($_FILES["digital_file"]["name"]));
+            $target_file = $target_dir . $digital_file_name;
+
+            if (move_uploaded_file($_FILES["digital_file"]["tmp_name"], $target_file)) {
+                $digital_file_path = "uploads/digital_products/" . $digital_file_name;
+                error_log('Digital file uploaded: ' . $digital_file_path);
+            } else {
+                error_log('Failed to upload digital file');
+            }
+        } else {
+            error_log('Invalid digital file type: ' . $file_extension);
+            $_SESSION['error_message'] = 'Invalid file type. Allowed: PDF, EPUB, MOBI, AZW, AZW3';
+        }
+    }
+
     try {
         if ($product_id > 0) {
             // Update existing product
-            $sql = "UPDATE products SET 
-                title = ?, author = ?, isbn_10 = ?, isbn_13 = ?, description = ?, 
-                category_id = ?, price = ?, original_price = ?, product_type = ?, 
-                featured = ?, status = ?, cover_image = ?, stock_quantity = ?, 
-                sku = ?, ean = ?, publisher = ?, publication_date = ?, language = ?, 
-                pages = ?, binding_type = ?, dimensions = ?, weight = ?, edition = ?, 
-                series = ?, affiliate_link = ?, meta_title = ?, meta_description = ?";
-            
-            $params = [$title, $author, $isbn_10, $isbn_13, $description, 
-                $category_id, $price, $original_price, $product_type, 
-                $featured, $status, $cover_image_name, $stock_quantity, 
-                $sku, $ean, $publisher, $publication_date, $language, 
-                $pages, $binding_type, $dimensions, $weight, $edition, 
-                $series, $affiliate_link, $meta_title, $meta_description];
-            
-            $types = "sssssidisissssssissdsssss";
+            $sql = "UPDATE products SET
+                title = ?, author = ?, isbn_10 = ?, isbn_13 = ?, description = ?,
+                category_id = ?, price = ?, original_price = ?, product_type = ?,
+                featured = ?, status = ?, cover_image = ?, stock_quantity = ?,
+                sku = ?, ean = ?, publisher = ?, publication_date = ?, language = ?,
+                pages = ?, binding_type = ?, dimensions = ?, weight = ?, edition = ?,
+                series = ?, affiliate_link = ?, digital_file_path = ?, meta_title = ?, meta_description = ?";
+
+            $params = [$title, $author, $isbn_10, $isbn_13, $description,
+                $category_id, $price, $original_price, $product_type,
+                $featured, $status, $cover_image_name, $stock_quantity,
+                $sku, $ean, $publisher, $publication_date, $language,
+                $pages, $binding_type, $dimensions, $weight, $edition,
+                $series, $affiliate_link, $digital_file_path, $meta_title, $meta_description];
+
+            $types = "sssssidisissssssissdssssss";
             
             if ($additional_images_json) {
                 $sql .= ", image_url = ?";
@@ -150,22 +178,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Insert new product
             $sql = "INSERT INTO products (
-                title, author, isbn_10, isbn_13, description, category_id, price, 
-                original_price, product_type, featured, status, cover_image, 
-                stock_quantity, sku, ean, publisher, publication_date, language, 
-                pages, binding_type, dimensions, weight, edition, series, 
-                affiliate_link, meta_title, meta_description";
-            
-            $values = " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?";
-            
-            $params = [$title, $author, $isbn_10, $isbn_13, $description, 
-                $category_id, $price, $original_price, $product_type, 
-                $featured, $status, $cover_image_name, $stock_quantity, 
-                $sku, $ean, $publisher, $publication_date, $language, 
-                $pages, $binding_type, $dimensions, $weight, $edition, 
-                $series, $affiliate_link, $meta_title, $meta_description];
-            
-            $types = "sssssidisissssssissdsssss";
+                title, author, isbn_10, isbn_13, description, category_id, price,
+                original_price, product_type, featured, status, cover_image,
+                stock_quantity, sku, ean, publisher, publication_date, language,
+                pages, binding_type, dimensions, weight, edition, series,
+                affiliate_link, digital_file_path, meta_title, meta_description";
+
+            $values = " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?";
+
+            $params = [$title, $author, $isbn_10, $isbn_13, $description,
+                $category_id, $price, $original_price, $product_type,
+                $featured, $status, $cover_image_name, $stock_quantity,
+                $sku, $ean, $publisher, $publication_date, $language,
+                $pages, $binding_type, $dimensions, $weight, $edition,
+                $series, $affiliate_link, $digital_file_path, $meta_title, $meta_description];
+
+            $types = "sssssidisissssssissdssssss";
             
             if ($additional_images_json) {
                 $sql .= ", image_url";
@@ -499,6 +527,37 @@ renderProfessionalJavaScript();
                         </div>
                     </div>
 
+                    <!-- Section 2b: Digital File Upload (for digital/both products) -->
+                    <div class="form-section mb-4 pb-3 border-bottom" id="digital_file_section" style="display: none;">
+                        <h5 class="mb-3" style="color: var(--primary); font-weight: 600;">
+                            <span>📱</span> Digital Product File
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <div class="professional-card" style="cursor: pointer;" onclick="document.getElementById('digital_file').click();">
+                                    <div class="card-body-professional text-center" style="padding: 2rem;">
+                                        <input class="form-control d-none" type="file" id="digital_file" name="digital_file" accept=".pdf,.epub,.mobi,.azw,.azw3">
+                                        <i class="bi bi-file-earmark-pdf" style="font-size: 2.5rem; color: #dc3545;"></i>
+                                        <h6 class="mt-2">Upload Digital Book File</h6>
+                                        <small class="text-muted">Click to upload PDF, EPUB, MOBI, or AZW file</small>
+                                        <div id="digital-file-preview" class="mt-3" style="display: none;">
+                                            <div class="alert alert-success">
+                                                <i class="bi bi-check-circle"></i>
+                                                <span id="digital-file-name"></span>
+                                                <button type="button" class="btn btn-sm btn-danger float-end" onclick="removeDigitalFile()">Remove</button>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" id="existing_digital_file" name="existing_digital_file" value="">
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-2">
+                                    <strong>Accepted formats:</strong> PDF, EPUB, MOBI, AZW, AZW3<br>
+                                    <strong>Note:</strong> This file will be available for customer download after purchase
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Section 3: Product Details & ISBNs -->
                     <div class="form-section mb-4 pb-3 border-bottom">
                         <h5 class="mb-3" style="color: var(--primary); font-weight: 600;">
@@ -653,11 +712,13 @@ renderProfessionalJavaScript();
                             <div class="col-md-4">
                                 <div class="form-group-professional">
                                     <label class="form-label-professional">Product Type</label>
-                                    <select class="form-select form-control-professional" id="product_type" name="product_type">
-                                        <option value="physical">Physical Book</option>
-                                        <option value="digital">Digital Book</option>
-                                        <option value="affiliate">Affiliate Link</option>
+                                    <select class="form-select form-control-professional" id="product_type" name="product_type" onchange="toggleProductTypeFields()">
+                                        <option value="physical">📦 Physical Book Only</option>
+                                        <option value="digital">📱 Digital Book Only (PDF/eBook)</option>
+                                        <option value="both">📦📱 Both (Physical + Digital)</option>
+                                        <option value="affiliate">🔗 Affiliate Link</option>
                                     </select>
+                                    <small class="text-muted">Select if this is a physical book, digital download, or both</small>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -1158,10 +1219,85 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         console.log('✅ Additional images event listener added');
     }
-    
+
+    // ============================================
+    // DIGITAL FILE UPLOAD HANDLING
+    // ============================================
+
+    // Toggle product type fields based on selection
+    window.toggleProductTypeFields = function() {
+        const productType = document.getElementById('product_type').value;
+        const digitalFileSection = document.getElementById('digital_file_section');
+        const stockQuantityGroup = document.getElementById('stock_quantity')?.closest('.form-group-professional');
+
+        console.log('🔄 Product type changed to:', productType);
+
+        // Show/hide digital file section
+        if (digitalFileSection) {
+            if (productType === 'digital' || productType === 'both') {
+                digitalFileSection.style.display = 'block';
+                console.log('📱 Digital file section shown');
+            } else {
+                digitalFileSection.style.display = 'none';
+                console.log('📦 Digital file section hidden');
+            }
+        }
+
+        // For digital-only products, stock quantity is not needed
+        if (stockQuantityGroup) {
+            if (productType === 'digital') {
+                stockQuantityGroup.style.opacity = '0.5';
+                document.getElementById('stock_quantity').value = '999999'; // Unlimited for digital
+                console.log('📱 Stock set to unlimited for digital product');
+            } else {
+                stockQuantityGroup.style.opacity = '1';
+            }
+        }
+    };
+
+    // Digital file preview
+    const digitalFileField = document.getElementById('digital_file');
+    if (digitalFileField) {
+        digitalFileField.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                console.log('📱 Digital file selected:', file.name, file.size, 'bytes');
+
+                const preview = document.getElementById('digital-file-preview');
+                const fileName = document.getElementById('digital-file-name');
+
+                if (fileName) {
+                    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                    fileName.textContent = `${file.name} (${fileSizeMB} MB)`;
+                }
+
+                if (preview) {
+                    preview.style.display = 'block';
+                }
+
+                console.log('✅ Digital file preview updated');
+            }
+        });
+        console.log('✅ Digital file event listener added');
+    }
+
+    // Remove digital file
+    window.removeDigitalFile = function() {
+        const digitalFileField = document.getElementById('digital_file');
+        const preview = document.getElementById('digital-file-preview');
+        const existingField = document.getElementById('existing_digital_file');
+
+        if (digitalFileField) digitalFileField.value = '';
+        if (preview) preview.style.display = 'none';
+        if (existingField) existingField.value = '';
+
+        console.log('🗑️ Digital file removed');
+    };
+
     // Initialize
     console.log('🎯 Initializing UI...');
     updateStepUI();
+    toggleProductTypeFields(); // Initialize field visibility
     console.log('✅ Initialization complete!');
 
     // ============================================
