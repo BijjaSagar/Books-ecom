@@ -195,7 +195,8 @@ $theme_mode = $settings['theme_mode'] ?? 'light';
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/bookshelf/public/css/style.css">
-    
+    <link rel="stylesheet" href="/bookshelf/public/css/responsive-fixes.css">
+
     <!-- Favicon -->
     <?php if(!empty($site_favicon)): ?>
     <link rel="icon" type="image/x-icon" href="/bookshelf/public/images/<?php echo safe_html($site_favicon); ?>">
