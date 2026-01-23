@@ -1,0 +1,120 @@
+# ============================================
+# Bookory .gitignore
+# ============================================
+
+# ============================================
+# Environment & Configuration
+# ============================================
+.env
+.env.*
+!.env.example
+!.env.hostinger
+config.local.php
+secrets.php
+
+# ============================================
+# Logs
+# ============================================
+logs/
+*.log
+error_log
+php_errors.log
+
+# ============================================
+# Uploads & Media
+# ============================================
+uploads/*
+!uploads/.gitkeep
+public/images/products/*
+!public/images/products/.gitkeep
+backups/
+*.sql
+*.sql.gz
+
+# ============================================
+# Cache & Temporary Files
+# ============================================
+cache/
+tmp/
+temp/
+*.tmp
+*.cache
+.DS_Store
+Thumbs.db
+
+# ============================================
+# IDE & Editor Files
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# Composer & Dependencies
+# ============================================
+vendor/
+composer.phar
+composer.lock
+
+# ============================================
+# Node & NPM (if used)
+# ============================================
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# ============================================
+# OS Files
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============================================
+# PHP
+# ============================================
+*.php~
+.phpunit.result.cache
+
+# ============================================
+# Database
+# ============================================
+*.sqlite
+*.sqlite3
+*.db
+
+# ============================================
+# Sensitive Files
+# ============================================
+*.key
+*.pem
+*.p12
+credentials.json
+client_secret.json
+
+# ============================================
+# Testing
+# ============================================
+coverage/
+.phpunit.cache/
+tests/_output/
+
+# ============================================
+# Build Files
+# ============================================
+dist/
+build/
+*.min.js
+*.min.css

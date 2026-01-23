@@ -42,7 +42,8 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+    <link rel="stylesheet" href="/bookshelf/public/css/responsive-fixes.css">
+
     <style>
         :root {
             --admin-primary: #1e40af;
